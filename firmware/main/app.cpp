@@ -162,7 +162,7 @@ libesp::ErrorType MyApp::onInit() {
 		vTaskDelay(500 / portTICK_RATE_MS);
 		Display.drawRec(0,60,FRAME_BUFFER_WIDTH/2,20, libesp::RGBColor::GREEN);
 		Display.drawString(15,110,"Color Validation.",libesp::RGBColor::RED);
-		Display.drawString(30,120,"UVLight Box",libesp::RGBColor::BLUE, libesp::RGBColor::WHITE,1,false);
+		Display.drawString(30,120,"Sensor Clock",libesp::RGBColor::BLUE, libesp::RGBColor::WHITE,1,false);
 		Display.swap();
 
 		vTaskDelay(1000 / portTICK_RATE_MS);
