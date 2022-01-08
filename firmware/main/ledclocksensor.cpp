@@ -35,13 +35,13 @@ void app_main() {
 
 //	gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
 
+  gpio_install_isr_service(0);
 	libesp::ErrorType et;
 	et = MyApp::get().init();
 
 	if(!et.ok()) {
 		ESP_LOGE(LOGTAG,"init error: %s", et.toString());
 	}
-
 
 	//ESP32_I2CMaster::doIt();
 

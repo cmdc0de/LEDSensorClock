@@ -16,6 +16,9 @@ class DisplayMessageState;
 class XPT2046;
 };
 
+class CalibrationMenu;
+class MenuState;
+
 enum ERRORS {
 	APP_OK = libesp::ErrorType::APP_OK
 	, OTA_INIT_FAIL = libesp::ErrorType::APP_BASE + 1

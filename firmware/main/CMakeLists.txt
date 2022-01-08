@@ -1,9 +1,9 @@
 set(srcs "./app.cpp"
 	"./ledclocksensor.cpp"
-  "./menu/calibration_menu.cpp"
-  "./menu/menu_state.cpp"
-  "./menu/appbase_menu.cpp"
-  "./menu/gui_list_processor.cpp"
+  "./menus/calibration_menu.cpp"
+  "./menus/menu_state.cpp"
+  "./menus/appbase_menu.cpp"
+  "./menus/gui_list_processor.cpp"
 )
 
 idf_component_register(SRCS "${srcs}"

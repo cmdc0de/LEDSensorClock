@@ -53,8 +53,8 @@ static uint16_t *BackBuffer = &BkBuffer[0];
 
 uint16_t ParallelLinesBuffer[MyApp::DISPLAY_WIDTH*PARALLEL_LINES] = {0};
 
-libesp::ScalingBuffer FrameBuf(&Display, MyApp::FRAME_BUFFER_WIDTH, MyApp::FRAME_BUFFER_HEIGHT, uint8_t(16), MyApp::DISPLAY
-_WIDTH,MyApp::DISPLAY_HEIGHT, PARALLEL_LINES, (uint8_t*)&BackBuffer[0],(uint8_t*)&ParallelLinesBuffer[0]);
+libesp::ScalingBuffer FrameBuf(&Display, MyApp::FRAME_BUFFER_WIDTH, MyApp::FRAME_BUFFER_HEIGHT, uint8_t(16), MyApp::DISPLAY_WIDTH
+    ,MyApp::DISPLAY_HEIGHT, PARALLEL_LINES, (uint8_t*)&BackBuffer[0],(uint8_t*)&ParallelLinesBuffer[0]);
 
 static GUI MyGui(&Display);
 static XPT2046 TouchTask(PIN_NUM_TOUCH_IRQ,true);
@@ -95,7 +95,7 @@ libesp::ErrorType MyApp::onInit() {
 	ErrorType et;
 	ESP_LOGI(LOGTAG,"OnInit: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
-  et = APA102c::initAPA102c(PIN_NUM_LEDS_MOSI, PIN_NUM_lEDS_CLK, VSPI_HOST, 1);
+  et = APA102c::initAPA102c(PIN_NUM_LEDS_MOSI, PIN_NUM_lEDS_CLK, SPI2_HOST, SPI_DMA_CH1);
   if(!et.ok()) {
     return et;
   } else {
@@ -104,7 +104,7 @@ libesp::ErrorType MyApp::onInit() {
 
 	ESP_LOGI(LOGTAG,"OnInit: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
-	SPIBus *vbus = SPIBus::get(VSPI_HOST);
+	SPIBus *vbus = SPIBus::get(SPI2_HOST);
   et = LedControl.initDevice(vbus);
 
   et = MyCalibrationMenu.initNVS();
@@ -113,35 +113,35 @@ libesp::ErrorType MyApp::onInit() {
 		return et;
 	}
 
-	et = XPT2046::initTouch(PIN_NUM_TOUCH_MISO, PIN_NUM_TOUCH_MOSI, PIN_NUM_TOUCH_CLK,HSPI_HOST, 1);
-	ESP_LOGI(LOGTAG,"After Touch and Calibration: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getM
-inimumFreeHeapSize());
+  //NOT initializing XPT as we don't need to set up spi bus since we are sharing with display
+	//et = XPT2046::initTouch(PIN_NUM_TOUCH_MISO, PIN_NUM_TOUCH_MOSI, PIN_NUM_TOUCH_CLK, SPI3_HOST, SPI_DMA_DISABLED);
+	//if(!et.ok()) {
+//		ESP_LOGE(LOGTAG,"failed to touch");
+//		return et;
+//	}
 
-	if(!et.ok()) {
-		ESP_LOGE(LOGTAG,"failed to touch");
-		return et;
-	}
+  //this will init the SPI bus and the display
+  DisplayILI9341::initDisplay(PIN_NUM_DISPLAY_MISO, PIN_NUM_DISPLAY_MOSI,
+    PIN_NUM_DISPLAY_SCK, SPI_DMA_CH2, PIN_NUM_DISPLAY_DATA_CMD, PIN_NUM_DISPLAY_RESET,
+    PIN_NUM_DISPLAY_BACKLIGHT, SPI3_HOST);
 
-	SPIBus *hbus = libesp::SPIBus::get(HSPI_HOST);
-	et = TouchTask.init(hbus,PIN_NUM_TOUCH_CS);
+  ESP_LOGI(LOGTAG,"After Display: Free: %u, Min %u", System::get().getFreeHeapSize()
+    ,System::get().getMinimumFreeHeapSize());
+
+  SPIBus *hbus = libesp::SPIBus::get(SPI3_HOST);
+#define USE_TOUCH
+#ifdef USE_TOUCH
+  et = TouchTask.init(hbus,PIN_NUM_TOUCH_CS);
 
 	if(!et.ok()) {
 		ESP_LOGE(LOGTAG,"failed to touch SPI");
 		return et;
 	}
-
-	DisplayILI9341::initDisplay(PIN_NUM_DISPLAY_MISO, PIN_NUM_DISPLAY_MOSI,
-			PIN_NUM_DISPLAY_CLK, 2, PIN_NUM_DISPLAY_DATA_CMD, PIN_NUM_DISPLAY_RESET,
-			PIN_NUM_DISPLAY_BACKLIGHT, HSPI_HOST);
-
-  ESP_LOGI(LOGTAG,"After Display: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeap
-Size());
-
+#endif
 
 	FrameBuf.createInitDevice(hbus,PIN_NUM_DISPLAY_CS,PIN_NUM_DISPLAY_DATA_CMD);
 	
-	ESP_LOGI(LOGTAG,"After FrameBuf: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHea
-pSize());
+	ESP_LOGI(LOGTAG,"After FrameBuf: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
 	ESP_LOGI(LOGTAG,"start display init");
 	et=Display.init(libesp::DisplayILI9341::FORMAT_16_BIT, &Font_6x10, &FrameBuf);
@@ -166,16 +166,14 @@ pSize());
 		Display.swap();
 
 		vTaskDelay(1000 / portTICK_RATE_MS);
-		ESP_LOGI(LOGTAG,"After Display swap:Free: %u, Min %u",System::get().getFreeHeapSize(),System::get().getMini
-mumFreeHeapSize());
+		ESP_LOGI(LOGTAG,"After Display swap:Free: %u, Min %u",System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
 	} else {
 		ESP_LOGE(LOGTAG,"failed display init");
 	}
 
 	TouchTask.start();
-	ESP_LOGI(LOGTAG,"After Task starts: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFree
-HeapSize());
+	ESP_LOGI(LOGTAG,"After Task starts: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
   if(et.ok()) {
     for(int i=0;i<NumLEDs;++i) {
@@ -262,4 +260,50 @@ ErrorType MyApp::onRun() {
 #endif
 }
 
+XPT2046 &MyApp::getTouch() {
+	return TouchTask;
+}
+
+uint16_t MyApp::getCanvasWidth() {
+	return FrameBuf.getBufferWidth(); 
+}
+
+uint16_t MyApp::getCanvasHeight() {
+	return FrameBuf.getBufferHeight();
+}
+
+uint16_t MyApp::getLastCanvasWidthPixel() {
+	return getCanvasWidth()-1;
+}
+
+uint16_t MyApp::getLastCanvasHeightPixel() {
+	return getCanvasHeight()-1;
+}
+
+libesp::DisplayDevice &MyApp::getDisplay() {
+	return Display;
+}
+
+libesp::GUI &MyApp::getGUI() {
+	return MyGui;
+}
+
+MenuState MyMenuState;
+libesp::DisplayMessageState DMS;
+
+MenuState *MyApp::getMenuState() {
+	return &MyMenuState;
+}
+
+CalibrationMenu *MyApp::getCalibrationMenu() {
+	return &MyCalibrationMenu;
+}
+
+DisplayMessageState *MyApp::getDisplayMessageState(BaseMenu *bm, const char *msg, uint32_t msDisplay) {
+	DMS.setMessage(msg);
+	DMS.setNextState(bm);
+	DMS.setTimeInState(msDisplay);
+	DMS.setDisplay(&Display);
+	return &DMS;
+}
 

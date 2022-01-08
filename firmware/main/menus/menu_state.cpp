@@ -2,7 +2,6 @@
 #include "../app.h"
 #include "gui_list_processor.h"
 #include "calibration_menu.h"
-#include "timer_menu.h"
 #include <app/display_message_state.h>
 #include <esp_log.h>
 
@@ -104,7 +103,7 @@ libesp::BaseMenu::ReturnStateContext MenuState::onRun() {
 		ESP_LOGI(LOGTAG, "Widget %s hit\n", widgetHit->getName());
 		switch(widgetHit->getWidgetID()) {
 		case 0:
-			nextState = MyApp::get().getTimerMenu();
+			//nextState = MyApp::get().getTimerMenu();
 			break;
 		}
 	}
