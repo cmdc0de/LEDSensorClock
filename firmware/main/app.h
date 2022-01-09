@@ -8,6 +8,7 @@
 #define LIGHTBOX_APP_H
 
 #include <app/app.h>
+//#include "dht11task.h"
 
 namespace libesp {
 class GUI;
@@ -36,6 +37,14 @@ public:
 	virtual ~MyErrorMap() {}
 };
 
+class MyApp;
+
+class MyAppMsg {
+public:
+  virtual bool handleMessage(MyApp *pApp) = 0;
+  virtual ~MyAppMsg() {}
+};
+
 class MyApp : public libesp::App {
 public:
   enum MODE {
@@ -45,8 +54,8 @@ public:
   };
 public:
 	static const char *LOGTAG;
-	//static const int QUEUE_SIZE = 10;
-	//static const int ITEM_SIZE = sizeof(MyAppMsg);
+	static const int QUEUE_SIZE = 10;
+	static const int ITEM_SIZE = sizeof(MyAppMsg*);
 	static const char *sYES;
 	static const char *sNO;
   static const uint32_t TIME_BETWEEN_PULSES = 1000;
@@ -79,6 +88,7 @@ private:
 	MyErrorMap AppErrors;
   MODE CurrentMode;
   uint32_t LastTime;
+  //DHT11Task DHT11T;
 private:
 	static MyApp mSelf;
 };

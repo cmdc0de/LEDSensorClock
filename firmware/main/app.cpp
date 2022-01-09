@@ -24,6 +24,7 @@
 #include "freertos.h"
 #include "fatfsvfs.h"
 #include "pinconfig.h"
+#include <device/sensor/dht11.h>
 
 using libesp::ErrorType;
 using libesp::System;
@@ -71,7 +72,7 @@ MyApp &MyApp::get() {
 	return mSelf;
 }
 
-MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) {
+MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) { //, DHT11T() {
 	ErrorType::setAppDetail(&AppErrors);
 }
 
@@ -95,7 +96,7 @@ libesp::ErrorType MyApp::onInit() {
 	ErrorType et;
 	ESP_LOGI(LOGTAG,"OnInit: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
-  et = APA102c::initAPA102c(PIN_NUM_LEDS_MOSI, PIN_NUM_lEDS_CLK, SPI2_HOST, SPI_DMA_CH1);
+  et = APA102c::initAPA102c(PIN_NUM_LEDS_MOSI, PIN_NUM_LEDS_CLK, SPI2_HOST, SPI_DMA_CH1);
   if(!et.ok()) {
     return et;
   } else {
@@ -173,8 +174,19 @@ libesp::ErrorType MyApp::onInit() {
 	}
 
 	TouchTask.start();
-	ESP_LOGI(LOGTAG,"After Task starts: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
+	ESP_LOGI(LOGTAG,"After Touch Task starts: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
+  libesp::DHT11_init(PIN_NUM_DHT_DATA);
+  struct libesp::dht11_reading d = libesp::DHT11_read();
+  ESP_LOGI(LOGTAG,"status %d, temp %d", d.status, d.temperature);
+  /*
+  if(DHT11T.init(PIN_NUM_DHT_DATA).ok()) {
+    DHT11T.start();
+	  ESP_LOGI(LOGTAG,"After DHT11 Task starts: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
+  } else {
+    ESP_LOGE(LOGTAG,"Failed to initialize DHT11 Task");
+  }
+*/
   if(et.ok()) {
     for(int i=0;i<NumLEDs;++i) {
       leds[i].setBlue(255);

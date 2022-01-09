@@ -2,7 +2,7 @@
 #define PINCONFIG_H
 
 #define PIN_NUM_LEDS_MOSI         GPIO_NUM_23
-#define PIN_NUM_lEDS_CLK          GPIO_NUM_18
+#define PIN_NUM_LEDS_CLK          GPIO_NUM_18
 
 #define PIN_NUM_DHT_DATA          GPIO_NUM_5
 
@@ -28,9 +28,7 @@
 #define PIN_NUM_TOUCH_IRQ         GPIO_NUM_33
 
 #define PIN_NUM_PHOTO_RESITOR     GPIO_NUM_35
+#define ADC_CHANNEL_PHOTO_RESITOR ADC1_CHANNEL_7
 #define PIN_NUM_IR_OUTPUT_IRQ     GPIO_NUM_34
-
-
-
 
 #endif
