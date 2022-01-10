@@ -8,7 +8,7 @@
 #define LIGHTBOX_APP_H
 
 #include <app/app.h>
-//#include "dht11task.h"
+#include "dht22task.h"
 
 namespace libesp {
 class GUI;
@@ -88,7 +88,7 @@ private:
 	MyErrorMap AppErrors;
   MODE CurrentMode;
   uint32_t LastTime;
-  //DHT11Task DHT11T;
+  DHT22Task DHT22T;
 private:
 	static MyApp mSelf;
 };

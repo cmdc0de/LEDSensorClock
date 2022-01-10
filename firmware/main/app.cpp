@@ -72,7 +72,7 @@ MyApp &MyApp::get() {
 	return mSelf;
 }
 
-MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) { //, DHT11T() {
+MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) ,DHT22T() {
 	ErrorType::setAppDetail(&AppErrors);
 }
 
@@ -176,17 +176,13 @@ libesp::ErrorType MyApp::onInit() {
 	TouchTask.start();
 	ESP_LOGI(LOGTAG,"After Touch Task starts: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
-  libesp::DHT11_init(PIN_NUM_DHT_DATA);
-  struct libesp::dht11_reading d = libesp::DHT11_read();
-  ESP_LOGI(LOGTAG,"status %d, temp %d", d.status, d.temperature);
-  /*
-  if(DHT11T.init(PIN_NUM_DHT_DATA).ok()) {
-    DHT11T.start();
-	  ESP_LOGI(LOGTAG,"After DHT11 Task starts: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
+  if(DHT22T.init(PIN_NUM_DHT_DATA).ok()) {
+    DHT22T.start();
+	  ESP_LOGI(LOGTAG,"After DHT22 Task starts: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
   } else {
-    ESP_LOGE(LOGTAG,"Failed to initialize DHT11 Task");
+    ESP_LOGE(LOGTAG,"Failed to initialize DHT22 Task");
   }
-*/
+
   if(et.ok()) {
     for(int i=0;i<NumLEDs;++i) {
       leds[i].setBlue(255);
@@ -208,13 +204,21 @@ libesp::ErrorType MyApp::onInit() {
 	return et;
 }
 
-static bool Down = true;
-
 ErrorType MyApp::onRun() {
-#if 0
-		  return ErrorType();
-#else
   ErrorType et;
+	TouchTask.broadcast();
+	libesp::BaseMenu::ReturnStateContext rsc = getCurrentMenu()->run();
+	Display.swap();
+
+	if (rsc.Err.ok()) {
+		if (getCurrentMenu() != rsc.NextMenuToRun) {
+			setCurrentMenu(rsc.NextMenuToRun);
+			ESP_LOGI(LOGTAG,"on Menu swap: Free: %u, Min %u",
+				System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
+		} else {
+		}
+	} 
+  
   uint32_t timeSinceLast = FreeRTOS::getTimeSinceStart()-LastTime;
   if(timeSinceLast>=TIME_BETWEEN_PULSES) {
     LastTime = FreeRTOS::getTimeSinceStart();
@@ -222,19 +226,9 @@ ErrorType MyApp::onRun() {
     case ONE:
       {
         for(int i=0;i<NumLEDs;++i) {
-#if 0
-          int16_t n = leds[i].getBrightness();
-          if(Down) n-=10;
-          else n+=10;
-          if(n>=100) Down = true;
-          else if(0<=n) Down = false;
-
-          leds[i].setBrightness(uint8_t(n&0xFF));
-#else
           leds[i].setBlue(0);
           leds[i].setBrightness(50);
           leds[i].setGreen(255);
-#endif
         }
 
         LedControl.init(NumLEDs, &leds[0]);
@@ -269,7 +263,6 @@ ErrorType MyApp::onRun() {
     }
   }
 	return et;
-#endif
 }
 
 XPT2046 &MyApp::getTouch() {

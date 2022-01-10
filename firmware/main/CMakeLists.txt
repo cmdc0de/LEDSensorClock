@@ -1,5 +1,6 @@
 set(srcs "./app.cpp"
 	"./ledclocksensor.cpp"
+  "./dht22task.cpp"
   "./menus/calibration_menu.cpp"
   "./menus/menu_state.cpp"
   "./menus/appbase_menu.cpp"

@@ -1,17 +1,17 @@
-#ifndef DHT11TASK_H
-#define DHT11TASK_H
+#ifndef DHT22TASK_H
+#define DHT22TASK_H
 #pragma once
 
 #include <task.h>
-#include <device/sensor/dht11.h>
+#include <device/sensor/dht22.h>
 
-class DHT11Task : public Task {
+class DHT22Task : public Task {
 public:
-  DHT11Task();
+  DHT22Task();
   libesp::ErrorType init(gpio_num_t dht11Pin);
 	virtual void run(void *data) override;
 private:
-  libesp::DHT11 Sensor;
+  libesp::DHT22 Sensor;
 };
 
 #endif
