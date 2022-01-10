@@ -25,6 +25,7 @@
 #include "fatfsvfs.h"
 #include "pinconfig.h"
 #include <device/sensor/dht11.h>
+#include "appmsg.h"
 
 using libesp::ErrorType;
 using libesp::System;
@@ -67,12 +68,15 @@ const char *MyErrorMap::toString(int32_t err) {
 }
 
 MyApp MyApp::mSelf;
+static StaticQueue_t InternalQueue;
+static uint8_t InternalQueueBuffer[MyApp::QUEUE_SIZE*MyApp::MSG_SIZE] = {0};
 
 MyApp &MyApp::get() {
 	return mSelf;
 }
 
-MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) ,DHT22T() {
+MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) ,DHT22T()
+                 , InternalQueueHandler(0), Temperature(0.0f), Humidity(0.0f) {
 	ErrorType::setAppDetail(&AppErrors);
 }
 
@@ -94,6 +98,9 @@ libesp::APA102c LedControl;
 
 libesp::ErrorType MyApp::onInit() {
 	ErrorType et;
+
+	InternalQueueHandler = xQueueCreateStatic(QUEUE_SIZE,MSG_SIZE,&InternalQueueBuffer[0],&InternalQueue);
+
 	ESP_LOGI(LOGTAG,"OnInit: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
   et = APA102c::initAPA102c(PIN_NUM_LEDS_MOSI, PIN_NUM_LEDS_CLK, SPI2_HOST, SPI_DMA_CH1);
@@ -200,13 +207,25 @@ libesp::ErrorType MyApp::onInit() {
 	} else {
 		setCurrentMenu(getMenuState());
 	}
-
 	return et;
+}
+
+void MyApp::handleMessages() {
+  MyAppMsg *msg = nullptr;
+  int counter = 0;
+	while(counter++<5 && xQueueReceive(InternalQueueHandler, &msg, 0)) {
+    if(msg!=nullptr) {
+      if(msg->handleMessage(this)) {
+  		  delete msg;
+      }
+    }
+  }
 }
 
 ErrorType MyApp::onRun() {
   ErrorType et;
 	TouchTask.broadcast();
+  handleMessages();
 	libesp::BaseMenu::ReturnStateContext rsc = getCurrentMenu()->run();
 	Display.swap();
 

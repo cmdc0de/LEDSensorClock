@@ -4,6 +4,16 @@
 
 #include <task.h>
 #include <device/sensor/dht22.h>
+#include "appmsg.h"
+
+class DHT22Msg : public MyAppMsg {
+public:
+  DHT22Msg(libesp::DHT22::Data &d) : THData(d) {}
+  virtual bool handleMessage(MyApp *);
+  virtual ~DHT22Msg() {}
+private:
+  libesp::DHT22::Data THData;
+};
 
 class DHT22Task : public Task {
 public:

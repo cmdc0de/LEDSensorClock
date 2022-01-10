@@ -16,12 +16,12 @@ static StaticQueue_t InternalQueue;
 static uint8_t InternalQueueBuffer[MenuState::QUEUE_SIZE*MenuState::MSG_SIZE] = {0};
 static const char *LOGTAG = "MenuState";
 
-static libesp::AABBox2D StartTimeBV(Point2Ds(34,34), 30);
-static libesp::Button StartTimerButton((const char *)"Set Timer", uint16_t(0), &StartTimeBV,RGBColor::BLUE, RGBColor::RED);
-static const int8_t NUM_INTERFACE_ITEMS = 1;
-static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&StartTimerButton};
-
-
+static libesp::AABBox2D TempBV(Point2Ds(30,40), 25);
+static libesp::Label TempLabel(uint16_t(0), (const char *)"Temperature", &TempBV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
+static libesp::AABBox2D HumBV(Point2Ds(100,40), 25);
+static libesp::Label HumLabel (uint16_t(0), (const char *)"Humidity", &HumBV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
+static const int8_t NUM_INTERFACE_ITEMS = 2;
+static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&TempLabel, &HumLabel};
 
 MenuState::MenuState() :
 	AppBaseMenu(), //MenuList("Main Menu", Items, 0, 0, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), 0, ItemCount),
@@ -35,39 +35,8 @@ MenuState::~MenuState() {
 
 }
 
-
 ErrorType MenuState::onInit() {
-	/*
-	Items[0].id = 0;
-	//if (MyApp::get().getContacts().getSettings().isNameSet()) {
-	//	Items[0].text = (const char *) "Settings";
-	//} else {
-		Items[0].text = (const char *) "Settings *";
-	//}
-	Items[1].id = 1;
-	Items[1].text = (const char *) "Badge Pair";
-	Items[2].id = 2;
-	Items[2].text = (const char *) "3D";
-	Items[3].id = 3;
-	Items[3].text = (const char *) "Screen Saver";
-	Items[4].id = 4;
-	Items[4].text = (const char *) "Draw";
-	Items[5].id = 5;
-	Items[5].text = (const char *) "Badge Info";
-	Items[6].id = 6;
-	Items[6].text = (const char *) "Communications Settings";
-	//Items[7].id = 7;
-	//Items[7].text = (const char *) "Scan for NPCs ";
-	Items[7].id = 7;
-	Items[7].text = (const char *) "Test Badge";
-	Items[8].id = 8;
-	Items[8].text = (const char *) "Calibrate Touch";
-	Items[9].id = 9;
-	Items[9].text = (const char *) "Connected Devices";
-	*/
 	MyApp::get().getDisplay().fillScreen(RGBColor::BLACK);
-	//MyApp::get().getGUI().drawList(&this->MenuList);
-	//empty queue
 	TouchNotification *pe = nullptr;
 	for(int i=0;i<2;i++) {
 		if(xQueueReceive(InternalQueueHandler, &pe, 0)) {
@@ -75,7 +44,6 @@ ErrorType MenuState::onInit() {
 		}
 	}
 	MyApp::get().getTouch().addObserver(InternalQueueHandler);
-
 	return ErrorType();
 }
 
@@ -96,6 +64,12 @@ libesp::BaseMenu::ReturnStateContext MenuState::onRun() {
 		delete pe;
 		widgetHit = MyLayout.pick(TouchPosInBuf);
 	}
+
+  char buf[16];
+  sprintf(&buf[0],"%2.1f",MyApp::get().getTemp());
+  TempLabel.setDisplayText(&buf[0]);
+  sprintf(&buf[0],"%2.1f",MyApp::get().getHumidity());
+  HumLabel.setDisplayText(&buf[0]);
 
 	MyLayout.draw(&MyApp::get().getDisplay());
 

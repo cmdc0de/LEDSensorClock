@@ -8,6 +8,8 @@
 #define LIGHTBOX_APP_H
 
 #include <app/app.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
 #include "dht22task.h"
 
 namespace libesp {
@@ -37,13 +39,7 @@ public:
 	virtual ~MyErrorMap() {}
 };
 
-class MyApp;
-
-class MyAppMsg {
-public:
-  virtual bool handleMessage(MyApp *pApp) = 0;
-  virtual ~MyAppMsg() {}
-};
+class MyAppMsg;
 
 class MyApp : public libesp::App {
 public:
@@ -55,7 +51,7 @@ public:
 public:
 	static const char *LOGTAG;
 	static const int QUEUE_SIZE = 10;
-	static const int ITEM_SIZE = sizeof(MyAppMsg*);
+	static const int MSG_SIZE = sizeof(MyAppMsg*);
 	static const char *sYES;
 	static const char *sNO;
   static const uint32_t TIME_BETWEEN_PULSES = 1000;
@@ -80,8 +76,13 @@ public:
 	libesp::XPT2046 &getTouch();
 	uint8_t *getBackBuffer();
 	uint32_t getBackBufferSize();
+  QueueHandle_t getMessageQueueHandle() {return InternalQueueHandler;}
+  void setTempHumidity(float t, float h) {Temperature=t;Humidity=h;}
+  float getTemp() {return Temperature;}
+  float getHumidity() {return Humidity;}
 protected:
 	MyApp();
+  void handleMessages();
 	virtual libesp::ErrorType onInit();
 	virtual libesp::ErrorType onRun();
 private:
@@ -89,6 +90,9 @@ private:
   MODE CurrentMode;
   uint32_t LastTime;
   DHT22Task DHT22T;
+	QueueHandle_t InternalQueueHandler;
+  float Temperature;
+  float Humidity;
 private:
 	static MyApp mSelf;
 };
