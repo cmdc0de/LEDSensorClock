@@ -26,6 +26,7 @@
 #include "pinconfig.h"
 #include <device/sensor/dht11.h>
 #include "appmsg.h"
+#include <adc.h>
 
 using libesp::ErrorType;
 using libesp::System;
@@ -95,6 +96,7 @@ uint32_t MyApp::getBackBufferSize() {
 static RGBB leds[256];
 static size_t NumLEDs = sizeof(leds)/sizeof(leds[0]);
 libesp::APA102c LedControl;
+libesp::ADC LightSensor;
 
 libesp::ErrorType MyApp::onInit() {
 	ErrorType et;
@@ -190,10 +192,19 @@ libesp::ErrorType MyApp::onInit() {
     ESP_LOGE(LOGTAG,"Failed to initialize DHT22 Task");
   }
 
+  //IO35
+  if(!LightSensor.init(ADC1_CHANNEL_7, ADC2_CHANNEL_MAX, ADC_WIDTH_BIT_12, ADC_ATTEN_DB_11, 30).ok()) {
+    ESP_LOGE(LOGTAG,"Failed to initialize LightSensor ");
+  } else {
+    libesp::ADC::Result r;
+    LightSensor.acquireData(r);
+    ESP_LOGI(LOGTAG, "RAW: %u Voltage: %u", r.RawAvg, r.CalculatedVoltage);
+  }
+
   if(et.ok()) {
     for(int i=0;i<NumLEDs;++i) {
       leds[i].setBlue(255);
-      leds[i].setBrightness(100);
+      leds[i].setBrightness(16);
     }
     LedControl.init(NumLEDs, &leds[0]);
     LedControl.send();
@@ -222,6 +233,9 @@ void MyApp::handleMessages() {
   }
 }
 
+static uint32_t SecondCount = 60;
+static uint32_t MinCount = 0;
+
 ErrorType MyApp::onRun() {
   ErrorType et;
 	TouchTask.broadcast();
@@ -237,17 +251,27 @@ ErrorType MyApp::onRun() {
 		} else {
 		}
 	} 
-  
+
   uint32_t timeSinceLast = FreeRTOS::getTimeSinceStart()-LastTime;
   if(timeSinceLast>=TIME_BETWEEN_PULSES) {
     LastTime = FreeRTOS::getTimeSinceStart();
+
+
+    libesp::ADC::Result r;
+    LightSensor.acquireData(r);
+    //ESP_LOGI(LOGTAG, "RAW: %u Voltage: %u", r.RawAvg, r.CalculatedVoltage);
+    char buf[32];
+    sprintf(&buf[0],"R: %u V: %u mV", r.RawAvg, r.CalculatedVoltage);
+    Display.drawString(3,120,&buf[0],libesp::RGBColor::WHITE);
+
     switch(CurrentMode) {
     case ONE:
       {
         for(int i=0;i<NumLEDs;++i) {
           leds[i].setBlue(0);
-          leds[i].setBrightness(50);
+          leds[i].setBrightness(12);
           leds[i].setGreen(255);
+          leds[i].setRed(0);
         }
 
         LedControl.init(NumLEDs, &leds[0]);
@@ -258,9 +282,10 @@ ErrorType MyApp::onRun() {
     case TWO:
       {
         for(int i=0;i<NumLEDs;++i) {
-          leds[i].setBrightness(10);
+          leds[i].setBrightness(8);
           leds[i].setGreen(0);
           leds[i].setRed(255);
+          leds[i].setBlue(0);
         }
         LedControl.init(NumLEDs, &leds[0]);
         LedControl.send();
@@ -270,10 +295,36 @@ ErrorType MyApp::onRun() {
     case THREE:
       {
         for(int i=0;i<NumLEDs;++i) {
-          leds[i].setBrightness(5);
+          leds[i].setBrightness(4);
           leds[i].setGreen(0);
           leds[i].setRed(0);
           leds[i].setBlue(255);
+        }
+        LedControl.init(NumLEDs, &leds[0]);
+        LedControl.send();
+        CurrentMode = FOUR;
+      }
+      break;
+    case FOUR:
+      {
+        for(int i=0;i<NumLEDs;++i) {
+          if(i>59 && i<=SecondCount) {
+            leds[i].setBrightness(8);
+            leds[i].setGreen(32);
+            leds[i].setRed(0);
+            leds[i].setBlue(0);
+          } else if(i<=MinCount) {
+            leds[i].setBrightness(8);
+            leds[i].setGreen(0);
+            leds[i].setRed(0);
+            leds[i].setBlue(64);
+          } else {
+            leds[i].setBrightness(0);
+          }
+        }
+        if(++SecondCount>119) {
+          SecondCount = 60;
+          MinCount++;
         }
         LedControl.init(NumLEDs, &leds[0]);
         LedControl.send();

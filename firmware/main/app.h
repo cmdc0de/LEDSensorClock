@@ -47,6 +47,7 @@ public:
     ONE,
     TWO
     , THREE
+    , FOUR
   };
 public:
 	static const char *LOGTAG;
