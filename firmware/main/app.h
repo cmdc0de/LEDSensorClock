@@ -82,6 +82,7 @@ public:
   void setTempHumidity(float t, float h) {Temperature=t;Humidity=h;}
   float getTemp() {return Temperature;}
   float getHumidity() {return Humidity;}
+  void setCO2(int16_t v) {CO2=v;}
 protected:
 	MyApp();
   void handleMessages();
@@ -95,7 +96,8 @@ private:
 	QueueHandle_t InternalQueueHandler;
   float Temperature;
   float Humidity;
-  MHZ19BTask MHZ19BT;
+  MHZ19Task MHZ19T;
+  int16_t CO2;
 private:
 	static MyApp mSelf;
 };
