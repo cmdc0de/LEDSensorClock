@@ -201,6 +201,17 @@ libesp::ErrorType MyApp::onInit() {
     ESP_LOGI(LOGTAG, "RAW: %u Voltage: %u", r.RawAvg, r.CalculatedVoltage);
   }
 
+  //init MHZ19B
+  //PIN_NUM_ESP_TX_MHZ19B_RX
+  //PIN_NUM_ESP_RX_MHZ19B_TX
+  //if(!MHZ19BT.init(UART_NUM_2, PIN_NUM_ESP_TX_MHZ19B_RX, PIN_NUM_ESP_RX_MHZ19B_TX).ok()) {
+  if(!MHZ19BT.init(UART_NUM_2, PIN_NUM_ESP_RX_MHZ19B_TX, PIN_NUM_ESP_TX_MHZ19B_RX).ok()) {
+    ESP_LOGE(LOGTAG,"Failed to initialize MHZ19B ");
+  } else {
+    ESP_LOGI(LOGTAG,"MHZ19B initialized");
+    MHZ19BT.start();
+  }
+
   if(et.ok()) {
     for(int i=0;i<NumLEDs;++i) {
       leds[i].setBlue(255);

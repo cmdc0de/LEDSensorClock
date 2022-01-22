@@ -11,6 +11,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include "dht22task.h"
+#include "mhz19btask.h"
 
 namespace libesp {
 class GUI;
@@ -94,6 +95,7 @@ private:
 	QueueHandle_t InternalQueueHandler;
   float Temperature;
   float Humidity;
+  MHZ19BTask MHZ19BT;
 private:
 	static MyApp mSelf;
 };
