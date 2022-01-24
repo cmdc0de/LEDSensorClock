@@ -2,51 +2,72 @@
 #include "mhz19btask.h"
 #include "app.h"
 
-static const char *LOGTAG = "MHZ19BTask";
+static const char *LOGTAG = "MHZ19Task";
   
-bool MHZ19BMsg::handleMessage(MyApp *p) {
+bool MHZ19Msg::handleMessage(MyApp *p) {
+  p->setCO2(CO2);
   return true;
 }
 
-MHZ19BTask::MHZ19BTask() : Task("MHZ19BTask"), co2(0), dev(), version(), range(0), autocal(false)  {
+MHZ19Task::MHZ19Task() : Task("MHZ19BTask"), CO2Sensor()  {
 }
 
 
-libesp::ErrorType MHZ19BTask::init(uart_port_t uartp, gpio_num_t tx, gpio_num_t rx) {
-  libesp::ErrorType et = mhz19b_init(&dev, uartp, tx, rx);
+libesp::ErrorType MHZ19Task::init(uart_port_t uartp, gpio_num_t tx, gpio_num_t rx) {
+  libesp::ErrorType et = CO2Sensor.init(uartp, tx, rx);
   if(et.ok()) {
-    while (!mhz19b_detect(&dev)) {
+    uint8_t count = 0;
+    while (!CO2Sensor.detect() && count++<5) {
       ESP_LOGI(LOGTAG, "MHZ-19B not detected, waiting...");
       vTaskDelay(1000 / portTICK_RATE_MS);
     }
 
-    mhz19b_get_version(&dev, version);
-    ESP_LOGI(LOGTAG, "MHZ-19B firmware version: %s", version);
-    ESP_LOGI(LOGTAG, "MHZ-19B set range and autocal");
+    if(et.ok() && count<=5) {
+      ESP_LOGI(LOGTAG, "MHZ-19 firmware version: %s", CO2Sensor.getVersion());
 
-    mhz19b_set_range(&dev, MHZ19B_RANGE_5000);
-    mhz19b_set_auto_calibration(&dev, false);
+      et = CO2Sensor.setRange(libesp::MHZ19::MHZ19_RANGE::MHZ19_RANGE_5000);
+      if(et.ok()) {
+        et = CO2Sensor.setAutoCalibration(true);
+        if(et.ok()) {
+          uint16_t range;
+          et = CO2Sensor.getRange(range);
+          if(et.ok()) {
+            ESP_LOGI(LOGTAG, "  range: %d", range);
 
-    mhz19b_get_range(&dev, &range);
-    ESP_LOGI(LOGTAG, "  range: %d", range);
-
-    mhz19b_get_auto_calibration(&dev, &autocal);
-    ESP_LOGI(LOGTAG, "  autocal: %s", autocal ? "ON" : "OFF");
+            bool autocal = false;
+            et = CO2Sensor.getAutoCalibration(autocal);
+            if(et.ok()) {
+              ESP_LOGI(LOGTAG, "  autocal: %s", autocal ? "ON" : "OFF");
+            } else {
+              ESP_LOGE(LOGTAG, "error getting auto cal %s", et.toString());
+            }
+          } else {
+            ESP_LOGE(LOGTAG, "error getting range: %s", et.toString());
+          }
+        } else {
+          ESP_LOGE(LOGTAG, "error getting setAutoCal: %s", et.toString());
+        }
+      } else {
+        ESP_LOGE(LOGTAG, "erorr set Range: %s", et.toString());
+      }
+    } else {
+      et = libesp::ErrorType::TIMEOUT_ERROR; 
+    }
   }
   return et;
 }
 
-void MHZ19BTask::run(void *data) {
+void MHZ19Task::run(void *data) {
 	ESP_LOGI(LOGTAG,"MHZ19BTask::run");
   while(1) {
-    while (mhz19b_is_warming_up(&dev)) {
-        ESP_LOGI(LOGTAG, "MHZ-19B is warming up");
-        vTaskDelay(1000 / portTICK_RATE_MS);
-    }
-
-    mhz19b_read_co2(&dev, &co2);
+    int16_t co2;
+    CO2Sensor.readCO2(co2);
     ESP_LOGI(LOGTAG, "CO2: %d", co2);
-    vTaskDelay(5000 / portTICK_RATE_MS);
+      MHZ19Msg *msg = new MHZ19Msg(co2);
+      if(errQUEUE_FULL==xQueueSend(MyApp::get().getMessageQueueHandle(), &msg, 0)) {
+        delete msg;
+      }
+    vTaskDelay(15000 / portTICK_RATE_MS);
   }
 }
 

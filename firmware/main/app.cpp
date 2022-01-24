@@ -78,7 +78,7 @@ MyApp &MyApp::get() {
 }
 
 MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) ,DHT22T()
-                 , InternalQueueHandler(0), Temperature(0.0f), Humidity(0.0f) {
+                 , InternalQueueHandler(0), Temperature(0.0f), Humidity(0.0f), MHZ19T(), CO2(0) {
 	ErrorType::setAppDetail(&AppErrors);
 }
 
@@ -202,15 +202,14 @@ libesp::ErrorType MyApp::onInit() {
     ESP_LOGI(LOGTAG, "RAW: %u Voltage: %u", r.RawAvg, r.CalculatedVoltage);
   }
 
-  //init MHZ19B
+  //init MHZ19
   //PIN_NUM_ESP_TX_MHZ19B_RX
   //PIN_NUM_ESP_RX_MHZ19B_TX
-  //if(!MHZ19BT.init(UART_NUM_2, PIN_NUM_ESP_TX_MHZ19B_RX, PIN_NUM_ESP_RX_MHZ19B_TX).ok()) {
-  if(!MHZ19BT.init(UART_NUM_2, PIN_NUM_ESP_RX_MHZ19B_TX, PIN_NUM_ESP_TX_MHZ19B_RX).ok()) {
+  if(!MHZ19T.init(UART_NUM_2, PIN_NUM_ESP_RX_MHZ19B_TX, PIN_NUM_ESP_TX_MHZ19B_RX).ok()) {
     ESP_LOGE(LOGTAG,"Failed to initialize MHZ19B ");
   } else {
-    ESP_LOGI(LOGTAG,"MHZ19B initialized");
-    MHZ19BT.start();
+    ESP_LOGI(LOGTAG,"MHZ19 initialized");
+    MHZ19T.start();
   }
 
   if(et.ok()) {
@@ -274,7 +273,9 @@ ErrorType MyApp::onRun() {
     //ESP_LOGI(LOGTAG, "RAW: %u Voltage: %u", r.RawAvg, r.CalculatedVoltage);
     char buf[32];
     sprintf(&buf[0],"R: %u V: %u mV", r.RawAvg, r.CalculatedVoltage);
-    Display.drawString(3,120,&buf[0],libesp::RGBColor::WHITE);
+    Display.drawString(3,110,&buf[0],libesp::RGBColor::WHITE);
+    sprintf(&buf[0],"CO2: %d", CO2);
+    Display.drawString(3,130,&buf[0],libesp::RGBColor::WHITE);
 
     switch(CurrentMode) {
     case ONE:

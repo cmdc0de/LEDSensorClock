@@ -1,5 +1,5 @@
-#ifndef MHZ19BTASK_H
-#define MHZ19BTASK_H
+#ifndef MHZ19TASK_H
+#define MHZ19TASK_H
 #pragma once
 
 #include <task.h>
@@ -7,25 +7,22 @@
 #include <error_type.h>
 #include "appmsg.h"
 
-class MHZ19BMsg : public MyAppMsg {
+class MHZ19Msg : public MyAppMsg {
 public:
-  MHZ19BMsg() {}
+  MHZ19Msg(int16_t v) : MyAppMsg(), CO2(v) {}
   virtual bool handleMessage(MyApp *);
-  virtual ~MHZ19BMsg() {}
+  virtual ~MHZ19Msg() {}
 private:
+  int16_t CO2;
 };
 
-class MHZ19BTask : public Task {
+class MHZ19Task : public Task {
 public:
-  MHZ19BTask();
+  MHZ19Task();
   libesp::ErrorType init(uart_port_t uartp, gpio_num_t tx, gpio_num_t rx);
 	virtual void run(void *data) override;
 private:
-  int16_t co2;
-  mhz19b_dev_t dev;
-  char version[6];
-  uint16_t range;
-  bool autocal;
+  libesp::MHZ19 CO2Sensor;
 };
 
 #endif
