@@ -27,6 +27,7 @@
 #include <device/sensor/dht11.h>
 #include "appmsg.h"
 #include <adc.h>
+#include <net/wifi.h>
 
 using libesp::ErrorType;
 using libesp::System;
