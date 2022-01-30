@@ -18,6 +18,7 @@
 #include <device/touch/XPT2046.h>
 #include "menus/menu_state.h"
 #include "menus/calibration_menu.h"
+#include "menus/wifi_menu.h"
 #include <app/display_message_state.h>
 #include "device/leds/apa102.h"
 #include "spibus.h"
@@ -27,7 +28,6 @@
 #include <device/sensor/dht11.h>
 #include "appmsg.h"
 #include <adc.h>
-#include <net/wifi.h>
 
 using libesp::ErrorType;
 using libesp::System;
@@ -40,7 +40,6 @@ using libesp::XPT2046;
 using libesp::GUI;
 using libesp::DisplayMessageState;
 using libesp::BaseMenu;
-
 
 const char *MyApp::LOGTAG = "AppTask";
 const char *MyApp::sYES = "Yes";
@@ -63,6 +62,7 @@ libesp::ScalingBuffer FrameBuf(&Display, MyApp::FRAME_BUFFER_WIDTH, MyApp::FRAME
 static GUI MyGui(&Display);
 static XPT2046 TouchTask(PIN_NUM_TOUCH_IRQ,true);
 static CalibrationMenu MyCalibrationMenu("nvs");
+static WiFiMenu MyWiFiMenu;
 
 
 const char *MyErrorMap::toString(int32_t err) {
@@ -78,7 +78,8 @@ MyApp &MyApp::get() {
 }
 
 MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) ,DHT22T()
-                 , InternalQueueHandler(0), Temperature(0.0f), Humidity(0.0f), MHZ19T(), CO2(0) {
+                 , InternalQueueHandler(0), Temperature(0.0f), Humidity(0.0f), MHZ19T(), CO2(0)
+                 , NVSStorage("app","data",false) {
 	ErrorType::setAppDetail(&AppErrors);
 }
 
@@ -106,6 +107,18 @@ libesp::ErrorType MyApp::onInit() {
 
 	ESP_LOGI(LOGTAG,"OnInit: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
+	et = NVSStorage.init();
+	if(!et.ok()) {
+		ESP_LOGI(LOGTAG, "1st InitNVS failed bc %s\n", et.toString());
+		et = NVSStorage.initStorage();
+		if(et.ok()) {
+			et = NVSStorage.init();
+		} else {
+			ESP_LOGI(LOGTAG, "initStorage failed %s\n", et.toString());
+		}
+	}
+	ESP_LOGI(LOGTAG,"OnInit: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
+
   et = APA102c::initAPA102c(PIN_NUM_LEDS_MOSI, PIN_NUM_LEDS_CLK, SPI2_HOST, SPI_DMA_CH1);
   if(!et.ok()) {
     return et;
@@ -115,6 +128,7 @@ libesp::ErrorType MyApp::onInit() {
 
 	ESP_LOGI(LOGTAG,"OnInit: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
+	ESP_LOGI(LOGTAG,"OnInit: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 	SPIBus *vbus = SPIBus::get(SPI2_HOST);
   et = LedControl.initDevice(vbus);
 
@@ -224,10 +238,22 @@ libesp::ErrorType MyApp::onInit() {
     ESP_LOGI(LOGTAG,"failed initDevice");
   }
 
+  et = MyWiFiMenu.initWiFi();
+  if(et.ok()) {
+    ESP_LOGI(LOGTAG,"OnInit:After Send: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
+  } else {
+    ESP_LOGE(LOGTAG,"Error Num :%d Msg: %s", et.getErrT(), et.toString());
+  }
+
   if(MyCalibrationMenu.hasBeenCalibrated()) {
 		setCurrentMenu(getCalibrationMenu());
 	} else {
-		setCurrentMenu(getMenuState());
+    if(MyWiFiMenu.hasWiFiBeenSetup().ok()) {
+      et = MyWiFiMenu.connect();
+  		setCurrentMenu(getMenuState());
+    } else {
+      setCurrentMenu(getWiFiMenu());
+    }
 	}
 	return et;
 }
@@ -249,7 +275,7 @@ static uint32_t MinCount = 0;
 
 ErrorType MyApp::onRun() {
   ErrorType et;
-	TouchTask.broadcast();
+	//TouchTask.broadcast();
   handleMessages();
 	libesp::BaseMenu::ReturnStateContext rsc = getCurrentMenu()->run();
 	Display.swap();
@@ -385,6 +411,10 @@ MenuState *MyApp::getMenuState() {
 
 CalibrationMenu *MyApp::getCalibrationMenu() {
 	return &MyCalibrationMenu;
+}
+
+WiFiMenu *MyApp::getWiFiMenu() {
+  return &MyWiFiMenu;
 }
 
 DisplayMessageState *MyApp::getDisplayMessageState(BaseMenu *bm, const char *msg, uint32_t msDisplay) {

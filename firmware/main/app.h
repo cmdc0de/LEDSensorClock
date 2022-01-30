@@ -12,6 +12,7 @@
 #include <freertos/queue.h>
 #include "dht22task.h"
 #include "mhz19btask.h"
+#include <nvs_memory.h>
 
 namespace libesp {
 class GUI;
@@ -22,6 +23,7 @@ class XPT2046;
 
 class CalibrationMenu;
 class MenuState;
+class WiFiMenu;
 
 enum ERRORS {
 	APP_OK = libesp::ErrorType::APP_OK
@@ -74,6 +76,7 @@ public:
 	libesp::GUI &getGUI();
 	MenuState *getMenuState();
 	CalibrationMenu *getCalibrationMenu();
+	WiFiMenu *getWiFiMenu();
 	libesp::DisplayMessageState *getDisplayMessageState(libesp::BaseMenu *, const char *msg, uint32_t msDisplay);
 	libesp::XPT2046 &getTouch();
 	uint8_t *getBackBuffer();
@@ -83,6 +86,7 @@ public:
   float getTemp() {return Temperature;}
   float getHumidity() {return Humidity;}
   void setCO2(int16_t v) {CO2=v;}
+  libesp::NVS &getNVS() { return NVSStorage;}
 protected:
 	MyApp();
   void handleMessages();
@@ -98,6 +102,7 @@ private:
   float Humidity;
   MHZ19Task MHZ19T;
   int16_t CO2;
+  libesp::NVS NVSStorage;
 private:
 	static MyApp mSelf;
 };
