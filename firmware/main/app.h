@@ -13,6 +13,7 @@
 #include "dht22task.h"
 #include "mhz19btask.h"
 #include <nvs_memory.h>
+#include <adc.h>
 
 namespace libesp {
 class GUI;
@@ -86,7 +87,10 @@ public:
   float getTemp() {return Temperature;}
   float getHumidity() {return Humidity;}
   void setCO2(int16_t v) {CO2=v;}
+  uint16_t getCO2() {return CO2;}
   libesp::NVS &getNVS() { return NVSStorage;}
+  uint32_t getLightSensorRaw() { return LSensorResult.RawAvg;}
+  uint32_t getLightCalcVoltage() { return LSensorResult.CalculatedVoltage;}
 protected:
 	MyApp();
   void handleMessages();
@@ -103,6 +107,7 @@ private:
   MHZ19Task MHZ19T;
   int16_t CO2;
   libesp::NVS NVSStorage;
+  libesp::ADC::Result LSensorResult;
 private:
 	static MyApp mSelf;
 };

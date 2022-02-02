@@ -65,13 +65,18 @@ libesp::BaseMenu::ReturnStateContext MenuState::onRun() {
 		widgetHit = MyLayout.pick(TouchPosInBuf);
 	}
 
-  char buf[16];
+  char buf[32];
   sprintf(&buf[0],"%2.1f",MyApp::get().getTemp());
   TempLabel.setDisplayText(&buf[0]);
   sprintf(&buf[0],"%2.1f",MyApp::get().getHumidity());
   HumLabel.setDisplayText(&buf[0]);
 
 	MyLayout.draw(&MyApp::get().getDisplay());
+    
+  sprintf(&buf[0],"R: %u V: %u mV", MyApp::get().getLightSensorRaw(), MyApp::get().getLightCalcVoltage());
+  MyApp::get().getDisplay().drawString(3,110,&buf[0],libesp::RGBColor::WHITE);
+  sprintf(&buf[0],"CO2: %d", MyApp::get().getCO2());
+  MyApp::get().getDisplay().drawString(3,130,&buf[0],libesp::RGBColor::WHITE);
 
 	if(widgetHit) {
 		ESP_LOGI(LOGTAG, "Widget %s hit\n", widgetHit->getName());

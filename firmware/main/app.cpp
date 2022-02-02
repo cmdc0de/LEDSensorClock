@@ -27,7 +27,6 @@
 #include "pinconfig.h"
 #include <device/sensor/dht11.h>
 #include "appmsg.h"
-#include <adc.h>
 
 using libesp::ErrorType;
 using libesp::System;
@@ -79,7 +78,7 @@ MyApp &MyApp::get() {
 
 MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) ,DHT22T()
                  , InternalQueueHandler(0), Temperature(0.0f), Humidity(0.0f), MHZ19T(), CO2(0)
-                 , NVSStorage("app","data",false) {
+                 , NVSStorage("app","data",false), LSensorResult() {
 	ErrorType::setAppDetail(&AppErrors);
 }
 
@@ -293,15 +292,13 @@ ErrorType MyApp::onRun() {
   if(timeSinceLast>=TIME_BETWEEN_PULSES) {
     LastTime = FreeRTOS::getTimeSinceStart();
 
-
-    libesp::ADC::Result r;
-    LightSensor.acquireData(r);
+    LightSensor.acquireData(LSensorResult);
     //ESP_LOGI(LOGTAG, "RAW: %u Voltage: %u", r.RawAvg, r.CalculatedVoltage);
-    char buf[32];
-    sprintf(&buf[0],"R: %u V: %u mV", r.RawAvg, r.CalculatedVoltage);
-    Display.drawString(3,110,&buf[0],libesp::RGBColor::WHITE);
-    sprintf(&buf[0],"CO2: %d", CO2);
-    Display.drawString(3,130,&buf[0],libesp::RGBColor::WHITE);
+    //char buf[32];
+    //sprintf(&buf[0],"R: %u V: %u mV", r.RawAvg, r.CalculatedVoltage);
+    //Display.drawString(3,110,&buf[0],libesp::RGBColor::WHITE);
+    //sprintf(&buf[0],"CO2: %d", CO2);
+    //Display.drawString(3,130,&buf[0],libesp::RGBColor::WHITE);
 
     switch(CurrentMode) {
     case ONE:

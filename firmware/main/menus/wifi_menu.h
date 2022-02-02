@@ -47,10 +47,7 @@ protected:
 	virtual libesp::BaseMenu::ReturnStateContext onRun();
 	virtual libesp::ErrorType onShutdown();
 private:
-	//libesp::GUIListData MenuList;
-	//libesp::GUIListItemData Items[10];
 	QueueHandle_t InternalQueueHandler;
-	//static const uint16_t ItemCount = uint16_t(sizeof(Items) / sizeof(Items[0]));
 	//libesp::StaticGridLayout MyLayout;
   libesp::WiFi MyWiFi;
   libesp::NTP NTPTime;
@@ -58,6 +55,9 @@ private:
   PASSWDTYPE  Password;
   uint32_t    Flags;
   uint16_t    ReTryCount;
+	libesp::GUIListItemData Items[16];
+	libesp::GUIListData MenuList;
+	static const uint16_t ItemCount = uint16_t(sizeof(Items) / sizeof(Items[0]));
 };
 
 #endif

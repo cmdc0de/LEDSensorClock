@@ -12,8 +12,7 @@ using libesp::Point2Ds;
 
 const char *AppBaseMenu::LOGTAG = "AppBaseMenu";
 
-char AppBaseMenu::ListBuffer[10][64] = {0};
-uint8_t AppBaseMenu::NumRows = 10;
+char AppBaseMenu::ListBuffer[AppBaseMenu::NumRows][AppBaseMenu::RowLength] = {0};
 
 void AppBaseMenu::clearListBuffer() {
 	memset(&ListBuffer[0], 0, sizeof(ListBuffer));
@@ -24,7 +23,7 @@ char *AppBaseMenu::getRow(uint8_t row) {
 	return &ListBuffer[row][0];
 }
 
-TouchNotification *AppBaseMenu::processTouch(QueueHandle_t &queH, libesp::GUIListData &guiList, uint16_t itemCount, bool &penUp, bool &headerHit) {
+bool AppBaseMenu::processTouch(QueueHandle_t &queH, libesp::GUIListData &guiList, uint16_t itemCount, bool &penUp, bool &headerHit) {
 	TouchNotification *pe = nullptr;
 	Point2Ds TouchPosInBuf;
 	headerHit = false;
@@ -44,6 +43,6 @@ TouchNotification *AppBaseMenu::processTouch(QueueHandle_t &queH, libesp::GUILis
 		if(touchGUI==GUIListProcessor::GUI_HEADER_HIT) headerHit = true;
 		ESP_LOGI(LOGTAG,"pe: %d", int32_t(pe));
 	}
-	return pe;
+	return pe!=nullptr;
 }
 

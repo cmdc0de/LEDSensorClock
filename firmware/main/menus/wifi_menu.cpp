@@ -6,6 +6,7 @@
 #include <esp_log.h>
 #include <esp_event.h>
 #include <esp_wifi.h>
+#include "menu_state.h"
 
 using libesp::ErrorType;
 using libesp::BaseMenu;
@@ -22,7 +23,9 @@ void time_sync_cb(struct timeval *tv) {
     ESP_LOGI(WiFiMenu::LOGTAG, "Notification of a time synchronization event");
 }
 
-WiFiMenu::WiFiMenu() : AppBaseMenu(), WiFiEventHandler(), MyWiFi(), NTPTime(), SSID(), Password(), Flags(0), ReTryCount(0) {
+WiFiMenu::WiFiMenu() : AppBaseMenu(), WiFiEventHandler(), InternalQueueHandler(), MyWiFi()
+  , NTPTime(), SSID(), Password(), Flags(0), ReTryCount(0), Items()
+  , MenuList(LOGTAG, Items, 0, 0, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), 0, ItemCount) {
 	InternalQueueHandler = xQueueCreateStatic(QUEUE_SIZE,MSG_SIZE,&InternalQueueBuffer[0],&InternalQueue);
 }
 
@@ -76,6 +79,13 @@ ErrorType WiFiMenu::onInit() {
 		}
 	}
 	MyApp::get().getTouch().addObserver(InternalQueueHandler);
+  clearListBuffer();
+  for(int i=0;i<(sizeof(Items)/sizeof(Items[0]));++i) {
+		Items[i].text = getRow(i);
+		Items[i].id = i;
+		Items[i].setShouldScroll();
+	}
+
 	return ErrorType();
 }
 
@@ -84,25 +94,35 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
 
   if(ScanResults.empty()) {
     ErrorType et = MyWiFi.scan(ScanResults,false);
+    for(uint32_t i = 0;i<ScanResults.size() && i< NumRows;++i) {
+      snprintf(getRow(i),AppBaseMenu::RowLength,"%s %d", ScanResults[i].getSSID().c_str(), ScanResults[i].getRSSI());
+    }
   }
 
-	TouchNotification *pe = nullptr;
-	Point2Ds TouchPosInBuf;
+	//Point2Ds TouchPosInBuf;
 	//libesp::Widget *widgetHit = nullptr;
 	bool penUp = false;
-	if(xQueueReceive(InternalQueueHandler, &pe, 0)) {
-		Point2Ds screenPoint(pe->getX(),pe->getY());
-		TouchPosInBuf = MyApp::get().getCalibrationMenu()->getPickPoint(screenPoint);
-		ESP_LOGI(LOGTAG,"TouchPoint: X:%d Y:%d PD:%d", int32_t(TouchPosInBuf.getX()),
-								 int32_t(TouchPosInBuf.getY()), pe->isPenDown()?1:0);
-		penUp = !pe->isPenDown();
-		delete pe;
+  bool hdrHit = false;
+	//if(xQueueReceive(InternalQueueHandler, &pe, 0)) {
+//		Point2Ds screenPoint(pe->getX(),pe->getY());
+//		TouchPosInBuf = MyApp::get().getCalibrationMenu()->getPickPoint(screenPoint);
+//		ESP_LOGI(LOGTAG,"TouchPoint: X:%d Y:%d PD:%d", int32_t(TouchPosInBuf.getX()),
+//								 int32_t(TouchPosInBuf.getY()), pe->isPenDown()?1:0);
+ //   penUp = !pe->isPenDown();
+	//	delete pe;
 		//widgetHit = MyLayout.pick(TouchPosInBuf);
-	}
+	//}
 
-  MyApp::get().getDisplay().drawString(10,10, "TODO");
+  bool pe = processTouch(InternalQueueHandler, MenuList, ItemCount, penUp, hdrHit);
+  if(penUp) {
+    if(hdrHit) {
+      nextState = MyApp::get().getMenuState();
+    } else {
+      //show details and a connect button
+    }
+  }
 
-//	MyLayout.draw(&MyApp::get().getDisplay());
+  MyApp::get().getGUI().drawList(&MenuList);
 
   /*
 	if(widgetHit) {
