@@ -17,7 +17,9 @@ using libesp::RGBColor;
 
 static StaticQueue_t InternalQueue;
 static uint8_t InternalQueueBuffer[WiFiMenu::QUEUE_SIZE*WiFiMenu::MSG_SIZE] = {0};
-const char *WiFiMenu::LOGTAG = "WiFiMenu";
+const char *WiFiMenu::LOGTAG = "SSID                  RSSI  CH";
+const char *WiFiMenu::WIFISID = "WIFISID";
+const char *WiFiMenu::WIFIPASSWD = "WIFIPASSWD";
 
 void time_sync_cb(struct timeval *tv) {
     ESP_LOGI(WiFiMenu::LOGTAG, "Notification of a time synchronization event");
@@ -33,11 +35,25 @@ WiFiMenu::WiFiMenu() : AppBaseMenu(), WiFiEventHandler(), InternalQueueHandler()
 ErrorType WiFiMenu::hasWiFiBeenSetup() {
   char data[64] = {'\0'};
   uint32_t len = sizeof(data);
-  ErrorType et = MyApp::get().getNVS().getValue("wifisid", &data[0],len);
+  ErrorType et = MyApp::get().getNVS().getValue(WIFISID, &data[0],len);
   if(et.ok()) {
     SSID = data;
-    et = MyApp::get().getNVS().getValue("wifipasswd", &data[0],len);
+    et = MyApp::get().getNVS().getValue(WIFIPASSWD, &data[0],len);
     Password = &data[0];
+  } else {
+    ESP_LOGI(LOGTAG,"failed to load wifisid: %d %s", et.getErrT(), et.toString()); 
+  }
+  return et;
+}
+
+ErrorType WiFiMenu::clearConnectData() {
+  ErrorType et = MyApp::get().getNVS().eraseKey(WIFISID);
+  if(!et.ok()) {
+    ESP_LOGI(LOGTAG,"failed to erase key ssid: %d %s", et.getErrT(), et.toString()); 
+  } 
+  et = MyApp::get().getNVS().eraseKey(WIFIPASSWD);
+  if(!et.ok()) {
+    ESP_LOGI(LOGTAG,"failed to erase key password: %d %s", et.getErrT(), et.toString()); 
   }
   return et;
 }
@@ -80,7 +96,7 @@ ErrorType WiFiMenu::onInit() {
 	}
 	MyApp::get().getTouch().addObserver(InternalQueueHandler);
   clearListBuffer();
-  for(int i=0;i<(sizeof(Items)/sizeof(Items[0]));++i) {
+  for(int i=0;i<ItemCount;++i) {
 		Items[i].text = getRow(i);
 		Items[i].id = i;
 		Items[i].setShouldScroll();
@@ -95,7 +111,8 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
   if(ScanResults.empty()) {
     ErrorType et = MyWiFi.scan(ScanResults,false);
     for(uint32_t i = 0;i<ScanResults.size() && i< NumRows;++i) {
-      snprintf(getRow(i),AppBaseMenu::RowLength,"%s %d", ScanResults[i].getSSID().c_str(), ScanResults[i].getRSSI());
+      snprintf(getRow(i),AppBaseMenu::RowLength,"%-19.18s  %4d  %3d"
+          , ScanResults[i].getSSID().c_str(), ScanResults[i].getRSSI(), ScanResults[i].getPrimary());
     }
   }
 
@@ -123,17 +140,6 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
   }
 
   MyApp::get().getGUI().drawList(&MenuList);
-
-  /*
-	if(widgetHit) {
-		ESP_LOGI(LOGTAG, "Widget %s hit\n", widgetHit->getName());
-		switch(widgetHit->getWidgetID()) {
-		case 0:
-			//nextState = MyApp::get().getTimerMenu();
-			break;
-		}
-	}
-*/
 
 	return BaseMenu::ReturnStateContext(nextState);
 }

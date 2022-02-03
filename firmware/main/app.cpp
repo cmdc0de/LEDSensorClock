@@ -78,7 +78,7 @@ MyApp &MyApp::get() {
 
 MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) ,DHT22T()
                  , InternalQueueHandler(0), Temperature(0.0f), Humidity(0.0f), MHZ19T(), CO2(0)
-                 , NVSStorage("app","data",false), LSensorResult() {
+                 , NVSStorage("appdata","data",false), LSensorResult() {
 	ErrorType::setAppDetail(&AppErrors);
 }
 
@@ -111,7 +111,13 @@ libesp::ErrorType MyApp::onInit() {
 		ESP_LOGI(LOGTAG, "1st InitNVS failed bc %s\n", et.toString());
 		et = NVSStorage.initStorage();
 		if(et.ok()) {
+      ESP_LOGI(LOGTAG, "initStorage succeeded");
 			et = NVSStorage.init();
+      if(et.ok()) {
+        ESP_LOGI(LOGTAG, "NVSSTorage init successful");
+      } else {
+		    ESP_LOGE(LOGTAG, "2nd InitNVS failed bc %s\nTHIS IS A PROBLEM\n", et.toString());
+      }
 		} else {
 			ESP_LOGI(LOGTAG, "initStorage failed %s\n", et.toString());
 		}

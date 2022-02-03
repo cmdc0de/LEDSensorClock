@@ -15,6 +15,8 @@ public:
   typedef libesp::WiFi::SSIDTYPE SSIDTYPE;
   typedef libesp::WiFi::PASSWDTYPE PASSWDTYPE;
   static const char *LOGTAG;
+  static const char *WIFISID;
+  static const char *WIFIPASSWD;
 	WiFiMenu();
 	virtual ~WiFiMenu();
   static const uint32_t MAX_RETRY_CONNECT_COUNT = 10;
@@ -29,6 +31,7 @@ public:
   libesp::ErrorType connect();
   bool isConnected();
   libesp::ErrorType initWiFi();
+  libesp::ErrorType clearConnectData();
 public:
   virtual libesp::ErrorType staStart();
   virtual libesp::ErrorType staStop();
@@ -55,7 +58,7 @@ private:
   PASSWDTYPE  Password;
   uint32_t    Flags;
   uint16_t    ReTryCount;
-	libesp::GUIListItemData Items[16];
+	libesp::GUIListItemData Items[AppBaseMenu::NumRows];
 	libesp::GUIListData MenuList;
 	static const uint16_t ItemCount = uint16_t(sizeof(Items) / sizeof(Items[0]));
 };

@@ -14,7 +14,7 @@ class AppBaseMenu : public libesp::BaseMenu {
 public:
 	static const char *LOGTAG;
   static const uint32_t RowLength = 64;
-	static const uint32_t NumRows = 10;
+	static const uint32_t NumRows = 16;
 public:
 	AppBaseMenu() : libesp::BaseMenu() {}
 	virtual ~AppBaseMenu(){}
