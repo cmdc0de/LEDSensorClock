@@ -26,6 +26,11 @@ public:
   static const uint32_t WIFI_READY = 1<<2;
   static const uint32_t HAS_IP = 1<<3;
   static const uint32_t SCAN_COMPLETE = 1<<4;
+  enum INTERNAL_STATE {
+    INIT = 0
+    , SCAN_RESULTS
+    , DISPLAY_SINGLE_SSID
+  };
 public:
   libesp::ErrorType hasWiFiBeenSetup();
   libesp::ErrorType connect();
@@ -60,6 +65,7 @@ private:
   uint16_t    ReTryCount;
 	libesp::GUIListItemData Items[AppBaseMenu::NumRows];
 	libesp::GUIListData MenuList;
+  INTERNAL_STATE InternalState;
 	static const uint16_t ItemCount = uint16_t(sizeof(Items) / sizeof(Items[0]));
 };
 

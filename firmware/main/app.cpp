@@ -144,11 +144,11 @@ libesp::ErrorType MyApp::onInit() {
 	}
 
   //NOT initializing XPT as we don't need to set up spi bus since we are sharing with display
-	//et = XPT2046::initTouch(PIN_NUM_TOUCH_MISO, PIN_NUM_TOUCH_MOSI, PIN_NUM_TOUCH_CLK, SPI3_HOST, SPI_DMA_DISABLED);
-	//if(!et.ok()) {
-//		ESP_LOGE(LOGTAG,"failed to touch");
-//		return et;
-//	}
+	et = XPT2046::initTouch(PIN_NUM_TOUCH_MISO, PIN_NUM_TOUCH_MOSI, PIN_NUM_TOUCH_CLK, SPI3_HOST, SPI_DMA_DISABLED);
+	if(!et.ok()) {
+		ESP_LOGE(LOGTAG,"failed to touch");
+		return et;
+	}
 
   //this will init the SPI bus and the display
   DisplayILI9341::initDisplay(PIN_NUM_DISPLAY_MISO, PIN_NUM_DISPLAY_MOSI,
@@ -159,15 +159,12 @@ libesp::ErrorType MyApp::onInit() {
     ,System::get().getMinimumFreeHeapSize());
 
   SPIBus *hbus = libesp::SPIBus::get(SPI3_HOST);
-#define USE_TOUCH
-#ifdef USE_TOUCH
   et = TouchTask.init(hbus,PIN_NUM_TOUCH_CS);
 
 	if(!et.ok()) {
 		ESP_LOGE(LOGTAG,"failed to touch SPI");
 		return et;
 	}
-#endif
 
 	FrameBuf.createInitDevice(hbus,PIN_NUM_DISPLAY_CS,PIN_NUM_DISPLAY_DATA_CMD);
 	
@@ -277,10 +274,11 @@ void MyApp::handleMessages() {
 
 static uint32_t SecondCount = 60;
 static uint32_t MinCount = 0;
+static uint16_t LightSensorCounter = 0;
 
 ErrorType MyApp::onRun() {
   ErrorType et;
-	//TouchTask.broadcast();
+	TouchTask.broadcast();
   handleMessages();
 	libesp::BaseMenu::ReturnStateContext rsc = getCurrentMenu()->run();
 	Display.swap();
@@ -298,7 +296,10 @@ ErrorType MyApp::onRun() {
   if(timeSinceLast>=TIME_BETWEEN_PULSES) {
     LastTime = FreeRTOS::getTimeSinceStart();
 
-    LightSensor.acquireData(LSensorResult);
+    if(++LightSensorCounter>3) {
+      LightSensor.acquireData(LSensorResult);
+      LightSensorCounter=0;
+    }
     //ESP_LOGI(LOGTAG, "RAW: %u Voltage: %u", r.RawAvg, r.CalculatedVoltage);
     //char buf[32];
     //sprintf(&buf[0],"R: %u V: %u mV", r.RawAvg, r.CalculatedVoltage);

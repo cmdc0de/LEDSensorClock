@@ -16,8 +16,8 @@ static const char *LOGTAG = "GUIListProcessor";
 int32_t GUIListProcessor::process(libesp::Point2Ds &p, libesp::GUIListData *pl, uint16_t itemC) {
 	uint16_t yMin = pl->y;
 	uint16_t yMax = yMin+pl->h;
-	if(p.getY()<yMin||p.getY()>yMax) return false;
-	if(p.getX()<pl->x||p.getX()>(pl->x+pl->w)) return false;
+	if(p.getY()<yMin||p.getY()>yMax) return NO_GUI_ITEM_HIT;
+	if(p.getX()<pl->x||p.getX()>(pl->x+pl->w)) return NO_GUI_ITEM_HIT;
 	uint16_t currentY = pl->y;
 	uint16_t perRow = MyApp::get().getDisplay().getFont()->FontHeight;
 	//skip over header

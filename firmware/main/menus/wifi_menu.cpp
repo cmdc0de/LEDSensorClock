@@ -27,7 +27,7 @@ void time_sync_cb(struct timeval *tv) {
 
 WiFiMenu::WiFiMenu() : AppBaseMenu(), WiFiEventHandler(), InternalQueueHandler(), MyWiFi()
   , NTPTime(), SSID(), Password(), Flags(0), ReTryCount(0), Items()
-  , MenuList(LOGTAG, Items, 0, 0, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), 0, ItemCount) {
+  , MenuList(LOGTAG, Items, 0, 0, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), 0, ItemCount), InternalState(INIT) {
 	InternalQueueHandler = xQueueCreateStatic(QUEUE_SIZE,MSG_SIZE,&InternalQueueBuffer[0],&InternalQueue);
 }
 
@@ -101,7 +101,9 @@ ErrorType WiFiMenu::onInit() {
 		Items[i].id = i;
 		Items[i].setShouldScroll();
 	}
-
+ 
+  ScanResults.clear();
+  InternalState = INIT;
 	return ErrorType();
 }
 
@@ -109,17 +111,17 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
 	BaseMenu *nextState = this;
 
   if(ScanResults.empty()) {
+    clearListBuffer();
     ErrorType et = MyWiFi.scan(ScanResults,false);
     for(uint32_t i = 0;i<ScanResults.size() && i< NumRows;++i) {
       snprintf(getRow(i),AppBaseMenu::RowLength,"%-19.18s  %4d  %3d"
           , ScanResults[i].getSSID().c_str(), ScanResults[i].getRSSI(), ScanResults[i].getPrimary());
     }
+    InternalState = SCAN_RESULTS;
   }
 
 	//Point2Ds TouchPosInBuf;
 	//libesp::Widget *widgetHit = nullptr;
-	bool penUp = false;
-  bool hdrHit = false;
 	//if(xQueueReceive(InternalQueueHandler, &pe, 0)) {
 //		Point2Ds screenPoint(pe->getX(),pe->getY());
 //		TouchPosInBuf = MyApp::get().getCalibrationMenu()->getPickPoint(screenPoint);
@@ -130,12 +132,35 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
 		//widgetHit = MyLayout.pick(TouchPosInBuf);
 	//}
 
+	bool penUp = false;
+  bool hdrHit = false;
   bool pe = processTouch(InternalQueueHandler, MenuList, ItemCount, penUp, hdrHit);
   if(penUp) {
-    if(hdrHit) {
-      nextState = MyApp::get().getMenuState();
+    uint32_t selectedItem = MenuList.selectedItem;
+    if(SCAN_RESULTS==InternalState) {
+      if(hdrHit) {
+        nextState = MyApp::get().getMenuState();
+      } else {
+        InternalState = DISPLAY_SINGLE_SSID;
+        clearListBuffer();
+        snprintf(getRow(0),AppBaseMenu::RowLength,"SSID:  %-22.21s", ScanResults[selectedItem].getSSID().c_str());
+        snprintf(getRow(1),AppBaseMenu::RowLength,"Auth:  %s", ScanResults[selectedItem].getAuthModeString());
+        snprintf(getRow(2),AppBaseMenu::RowLength,"RSSI:  %d", static_cast<int32_t>(ScanResults[selectedItem].getRSSI()));
+        snprintf(getRow(3),AppBaseMenu::RowLength,"Channel:  %d", static_cast<int32_t>(ScanResults[selectedItem].getPrimary()));
+        snprintf(getRow(4),AppBaseMenu::RowLength,"Capabilites:  B:%s N:%s G:%s LR:%s"
+          ,ScanResults[selectedItem].isWirelessB()?"Y":"N", ScanResults[selectedItem].isWirelessN()?"Y":"N"
+          ,ScanResults[selectedItem].isWirelessG()?"Y":"N", ScanResults[selectedItem].isWirelessLR()?"Y":"N");
+        snprintf(getRow(7),AppBaseMenu::RowLength,"Connect");
+        snprintf(getRow(9),AppBaseMenu::RowLength,"Back");
+      }
     } else {
-      //show details and a connect button
+      snprintf(getRow(5),AppBaseMenu::RowLength,"Password:  %s", "XXXXX");
+      if(selectedItem==7) {
+        ESP_LOGI(LOGTAG,"CONNECT!!!!!!");
+      } else if (9==selectedItem) {
+        InternalState=INIT;
+        ScanResults.clear();
+      }
     }
   }
 
