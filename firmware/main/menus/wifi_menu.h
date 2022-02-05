@@ -6,7 +6,7 @@
 #include <net/wifi.h>
 #include <net/networktimeprotocol.h>
 #include <net/wifieventhandler.h>
-//#include <device/display/layout.h>
+#include <device/display/layout.h>
 
 class WiFiMenu: public AppBaseMenu, libesp::WiFiEventHandler {
 public:
@@ -57,7 +57,6 @@ protected:
 	virtual libesp::ErrorType onShutdown();
 private:
 	QueueHandle_t InternalQueueHandler;
-	//libesp::StaticGridLayout MyLayout;
   libesp::WiFi MyWiFi;
   libesp::NTP NTPTime;
   SSIDTYPE    SSID;
@@ -68,6 +67,7 @@ private:
 	libesp::GUIListData MenuList;
   INTERNAL_STATE InternalState;
 	static const uint16_t ItemCount = uint16_t(sizeof(Items) / sizeof(Items[0]));
+	libesp::StaticGridLayout MyLayout;
 };
 
 #endif

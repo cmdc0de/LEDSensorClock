@@ -7,6 +7,7 @@
 #include <esp_event.h>
 #include <esp_wifi.h>
 #include "menu_state.h"
+#include <math/rectbbox.h>
 
 using libesp::ErrorType;
 using libesp::BaseMenu;
@@ -22,14 +23,26 @@ const char *WiFiMenu::MENUHEADER = "SSID                  RSSI  CH";
 const char *WiFiMenu::WIFISID = "WIFISID";
 const char *WiFiMenu::WIFIPASSWD = "WIFIPASSWD";
 
+static libesp::RectBBox2D BackBV(Point2Ds(35,95), 25, 10);
+static libesp::Button BackButton((const char *)"Back", uint16_t(0), &BackBV,RGBColor::BLUE, RGBColor::WHITE);
+static libesp::RectBBox2D ConnectBV(Point2Ds(125,95), 25, 10);
+static libesp::Button ConnectButton ((const char *)"Connect", uint16_t(1), &ConnectBV,RGBColor::BLUE, RGBColor::WHITE);
+static const int8_t NUM_INTERFACE_ITEMS = 2;
+static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&BackButton, &ConnectButton};
+
+
 void time_sync_cb(struct timeval *tv) {
     ESP_LOGI(WiFiMenu::LOGTAG, "Notification of a time synchronization event");
 }
 
 WiFiMenu::WiFiMenu() : AppBaseMenu(), WiFiEventHandler(), InternalQueueHandler(), MyWiFi()
   , NTPTime(), SSID(), Password(), Flags(0), ReTryCount(0), Items()
-  , MenuList(MENUHEADER, Items, 0, 0, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), 0, ItemCount), InternalState(INIT) {
+  , MenuList(MENUHEADER, Items, 0, 0, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), 0, ItemCount)
+  , InternalState(INIT)
+	, MyLayout(&InterfaceElements[0],NUM_INTERFACE_ITEMS, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), false) {
+
 	InternalQueueHandler = xQueueCreateStatic(QUEUE_SIZE,MSG_SIZE,&InternalQueueBuffer[0],&InternalQueue);
+	MyLayout.reset();
 }
 
 
@@ -110,10 +123,12 @@ ErrorType WiFiMenu::onInit() {
 
 libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
 	BaseMenu *nextState = this;
+  //ESP_LOGI(LOGTAG, "CURRENT STATE = %u, size of ScanResults: %u", InternalState, ScanResults.size());
 
   if(ScanResults.empty()) {
     ESP_LOGI(LOGTAG,"*****************************Scanresutls empty()");
     clearListBuffer();
+    MyApp::get().getDisplay().fillScreen(RGBColor::BLACK);
     MenuList.selectedItem=0;//remove selected item
     ErrorType et = MyWiFi.scan(ScanResults,false);
     //ESP_LOGI(LOGTAG,"in vector: %u", ScanResults.size());
@@ -121,62 +136,78 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
       snprintf(getRow(i),AppBaseMenu::RowLength,"%-19.18s  %4d  %3d"
           , ScanResults[i].getSSID().c_str(), ScanResults[i].getRSSI(), ScanResults[i].getPrimary());
     }
+    MyApp::get().getGUI().drawList(&MenuList);
     InternalState = SCAN_RESULTS;
   }
 
-	//Point2Ds TouchPosInBuf;
-	//libesp::Widget *widgetHit = nullptr;
-	//if(xQueueReceive(InternalQueueHandler, &pe, 0)) {
-//		Point2Ds screenPoint(pe->getX(),pe->getY());
-//		TouchPosInBuf = MyApp::get().getCalibrationMenu()->getPickPoint(screenPoint);
-//		ESP_LOGI(LOGTAG,"TouchPoint: X:%d Y:%d PD:%d", int32_t(TouchPosInBuf.getX()),
-//								 int32_t(TouchPosInBuf.getY()), pe->isPenDown()?1:0);
- //   penUp = !pe->isPenDown();
-	//	delete pe;
-		//widgetHit = MyLayout.pick(TouchPosInBuf);
-	//}
 
-	bool penUp = false;
-  bool hdrHit = false;
-  bool pe = processTouch(InternalQueueHandler, MenuList, ItemCount, penUp, hdrHit);
-  if(pe && penUp) {
-    uint32_t selectedItem = MenuList.selectedItem;
-    ESP_LOGI(LOGTAG,"selectItem %u", selectedItem);
-    if(SCAN_RESULTS==InternalState) {
-      ESP_LOGI(LOGTAG,"state = SCAN_RESULTS");
+  if(SCAN_RESULTS==InternalState) {
+	  bool penUp = false;
+    bool hdrHit = false;
+    bool pe = processTouch(InternalQueueHandler, MenuList, ItemCount, penUp, hdrHit);
+    if(pe && penUp) {
+      uint32_t selectedItem = MenuList.selectedItem;
+      ESP_LOGI(LOGTAG,"selectItem %u", selectedItem);
       if(hdrHit) {
         nextState = MyApp::get().getMenuState();
       } else {
         InternalState = DISPLAY_SINGLE_SSID;
-        MenuList.selectedItem=0;//remove selected item
-        clearListBuffer();
-        snprintf(getRow(0),AppBaseMenu::RowLength,"SSID:  %-22.21s", ScanResults[selectedItem].getSSID().c_str());
-        snprintf(getRow(1),AppBaseMenu::RowLength,"Auth:  %s", ScanResults[selectedItem].getAuthModeString());
-        snprintf(getRow(2),AppBaseMenu::RowLength,"RSSI:  %d", static_cast<int32_t>(ScanResults[selectedItem].getRSSI()));
-        snprintf(getRow(3),AppBaseMenu::RowLength,"Channel:  %d", static_cast<int32_t>(ScanResults[selectedItem].getPrimary()));
-        snprintf(getRow(4),AppBaseMenu::RowLength,"Capabilites:  B:%s N:%s G:%s LR:%s"
+        MyApp::get().getDisplay().fillScreen(RGBColor::BLACK);
+        char rowBuffer[64];
+        snprintf(&rowBuffer[0],sizeof(rowBuffer),"SSID:  %-22.21s", ScanResults[selectedItem].getSSID().c_str());
+        MyApp::get().getDisplay().drawString(5,10,&rowBuffer[0],RGBColor::WHITE);
+        snprintf(&rowBuffer[0],sizeof(rowBuffer),"Auth:  %s",  ScanResults[selectedItem].getAuthModeString());
+        MyApp::get().getDisplay().drawString(5,20,&rowBuffer[0],RGBColor::WHITE);
+        snprintf(&rowBuffer[0],sizeof(rowBuffer),"RSSI:  %d", static_cast<int32_t>(ScanResults[selectedItem].getRSSI()));
+        MyApp::get().getDisplay().drawString(5,30,&rowBuffer[0],RGBColor::WHITE);
+        snprintf(&rowBuffer[0],sizeof(rowBuffer),"Channel:  %d", static_cast<int32_t>(ScanResults[selectedItem].getPrimary()));
+        MyApp::get().getDisplay().drawString(5,40,&rowBuffer[0],RGBColor::WHITE);
+        snprintf(&rowBuffer[0],sizeof(rowBuffer),"Capabilites:  B:%s N:%s G:%s LR:%s"
           ,ScanResults[selectedItem].isWirelessB()?"Y":"N", ScanResults[selectedItem].isWirelessN()?"Y":"N"
           ,ScanResults[selectedItem].isWirelessG()?"Y":"N", ScanResults[selectedItem].isWirelessLR()?"Y":"N");
-        snprintf(getRow(5),AppBaseMenu::RowLength,"Password:  %s", "XXXXX");
-        snprintf(getRow(7),AppBaseMenu::RowLength,"Connect");
-        snprintf(getRow(9),AppBaseMenu::RowLength,"Back");
+        MyApp::get().getDisplay().drawString(5,50,&rowBuffer[0],RGBColor::WHITE);
+        snprintf(&rowBuffer[0],sizeof(rowBuffer),"Password:  %s", "XXXXX");
+        MyApp::get().getDisplay().drawString(5,60,&rowBuffer[0],RGBColor::WHITE);
+        MyLayout.draw(&MyApp::get().getDisplay());
       }
     } else {
-      ESP_LOGI(LOGTAG,"state = DISPLAY_SINGLE_SSID");
-      snprintf(getRow(5),AppBaseMenu::RowLength,"Password:  %s", "XXXXX");
-      if(selectedItem==7) {
-        ESP_LOGI(LOGTAG,"CONNECT!!!!!!");
-      } else if (9==selectedItem) {
-        InternalState=INIT;
-        ScanResults.clear();
+      MyApp::get().getGUI().drawList(&MenuList);
+    } 
+  } else {
+    Point2Ds TouchPosInBuf;
+    libesp::Widget *widgetHit = nullptr;
+	  TouchNotification *pe = nullptr;
+    if(xQueueReceive(InternalQueueHandler, &pe, 0)) {
+      Point2Ds screenPoint(pe->getX(),pe->getY());
+      TouchPosInBuf = MyApp::get().getCalibrationMenu()->getPickPoint(screenPoint);
+      ESP_LOGI(LOGTAG,"TouchPoint: X:%d Y:%d PD:%d", int32_t(TouchPosInBuf.getX()), int32_t(TouchPosInBuf.getY()), pe->isPenDown()?1:0);
+      bool penUp = !pe->isPenDown();
+      delete pe;
+      widgetHit = MyLayout.pick(TouchPosInBuf);
+    	if(widgetHit && penUp) {
+        ESP_LOGI(LOGTAG, "Widget %s hit\n", widgetHit->getName());
+        switch(widgetHit->getWidgetID()) {
+        case 0:
+          InternalState = INIT;
+          ScanResults.clear();
+          ESP_LOGI(LOGTAG,"BACK: %u", static_cast<uint32_t>(InternalState));
+          break;
+        default:
+          ESP_LOGI(LOGTAG, "CONNECT");
+          InternalState = INIT; //FOR NOW
+          ScanResults.clear();
+          break;
+        }
+	      MyApp::get().getDisplay().fillScreen(RGBColor::BLACK);
       } else {
-        MenuList.selectedItem=0;//remove selected item
+        MyLayout.draw(&MyApp::get().getDisplay());
       }
+    } else {
+      char rowBuffer[64];
+      snprintf(&rowBuffer[0],sizeof(rowBuffer),"Password:  %s", "XXXXX");
+      MyApp::get().getDisplay().drawString(5,60,&rowBuffer[0],RGBColor::WHITE);
     }
   }
-
-  MyApp::get().getGUI().drawList(&MenuList);
-
 	return BaseMenu::ReturnStateContext(nextState);
 }
 
