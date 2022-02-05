@@ -71,6 +71,7 @@ const char *MyErrorMap::toString(int32_t err) {
 MyApp MyApp::mSelf;
 static StaticQueue_t InternalQueue;
 static uint8_t InternalQueueBuffer[MyApp::QUEUE_SIZE*MyApp::MSG_SIZE] = {0};
+static StaticSemaphore_t xMutexDisplayTouchBuffer;
 
 MyApp &MyApp::get() {
 	return mSelf;
@@ -78,7 +79,7 @@ MyApp &MyApp::get() {
 
 MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) ,DHT22T()
                  , InternalQueueHandler(0), Temperature(0.0f), Humidity(0.0f), MHZ19T(), CO2(0)
-                 , NVSStorage("appdata","data",false), LSensorResult() {
+                 , NVSStorage("appdata","data",false), LSensorResult(), DisplayTouchSemaphore(nullptr) {
 	ErrorType::setAppDetail(&AppErrors);
 }
 
@@ -106,6 +107,9 @@ libesp::ErrorType MyApp::onInit() {
 
 	ESP_LOGI(LOGTAG,"OnInit: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
+  DisplayTouchSemaphore = xSemaphoreCreateMutexStatic(&xMutexDisplayTouchBuffer);
+
+	ESP_LOGI(LOGTAG,"OnInit: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 	et = NVSStorage.init();
 	if(!et.ok()) {
 		ESP_LOGI(LOGTAG, "1st InitNVS failed bc %s\n", et.toString());
@@ -159,14 +163,14 @@ libesp::ErrorType MyApp::onInit() {
     ,System::get().getMinimumFreeHeapSize());
 
   SPIBus *hbus = libesp::SPIBus::get(SPI3_HOST);
-  et = TouchTask.init(hbus,PIN_NUM_TOUCH_CS);
+  et = TouchTask.init(hbus,PIN_NUM_TOUCH_CS,DisplayTouchSemaphore);
 
 	if(!et.ok()) {
 		ESP_LOGE(LOGTAG,"failed to touch SPI");
 		return et;
 	}
 
-	FrameBuf.createInitDevice(hbus,PIN_NUM_DISPLAY_CS,PIN_NUM_DISPLAY_DATA_CMD);
+	FrameBuf.createInitDevice(hbus,PIN_NUM_DISPLAY_CS,PIN_NUM_DISPLAY_DATA_CMD, DisplayTouchSemaphore);
 	
 	ESP_LOGI(LOGTAG,"After FrameBuf: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 

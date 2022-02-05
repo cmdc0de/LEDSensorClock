@@ -17,7 +17,8 @@ using libesp::RGBColor;
 
 static StaticQueue_t InternalQueue;
 static uint8_t InternalQueueBuffer[WiFiMenu::QUEUE_SIZE*WiFiMenu::MSG_SIZE] = {0};
-const char *WiFiMenu::LOGTAG = "SSID                  RSSI  CH";
+const char *WiFiMenu::LOGTAG = "WIFIMENU";
+const char *WiFiMenu::MENUHEADER = "SSID                  RSSI  CH";
 const char *WiFiMenu::WIFISID = "WIFISID";
 const char *WiFiMenu::WIFIPASSWD = "WIFIPASSWD";
 
@@ -27,7 +28,7 @@ void time_sync_cb(struct timeval *tv) {
 
 WiFiMenu::WiFiMenu() : AppBaseMenu(), WiFiEventHandler(), InternalQueueHandler(), MyWiFi()
   , NTPTime(), SSID(), Password(), Flags(0), ReTryCount(0), Items()
-  , MenuList(LOGTAG, Items, 0, 0, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), 0, ItemCount), InternalState(INIT) {
+  , MenuList(MENUHEADER, Items, 0, 0, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), 0, ItemCount), InternalState(INIT) {
 	InternalQueueHandler = xQueueCreateStatic(QUEUE_SIZE,MSG_SIZE,&InternalQueueBuffer[0],&InternalQueue);
 }
 
@@ -111,8 +112,11 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
 	BaseMenu *nextState = this;
 
   if(ScanResults.empty()) {
+    ESP_LOGI(LOGTAG,"*****************************Scanresutls empty()");
     clearListBuffer();
+    MenuList.selectedItem=0;//remove selected item
     ErrorType et = MyWiFi.scan(ScanResults,false);
+    //ESP_LOGI(LOGTAG,"in vector: %u", ScanResults.size());
     for(uint32_t i = 0;i<ScanResults.size() && i< NumRows;++i) {
       snprintf(getRow(i),AppBaseMenu::RowLength,"%-19.18s  %4d  %3d"
           , ScanResults[i].getSSID().c_str(), ScanResults[i].getRSSI(), ScanResults[i].getPrimary());
@@ -135,13 +139,16 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
 	bool penUp = false;
   bool hdrHit = false;
   bool pe = processTouch(InternalQueueHandler, MenuList, ItemCount, penUp, hdrHit);
-  if(penUp) {
+  if(pe && penUp) {
     uint32_t selectedItem = MenuList.selectedItem;
+    ESP_LOGI(LOGTAG,"selectItem %u", selectedItem);
     if(SCAN_RESULTS==InternalState) {
+      ESP_LOGI(LOGTAG,"state = SCAN_RESULTS");
       if(hdrHit) {
         nextState = MyApp::get().getMenuState();
       } else {
         InternalState = DISPLAY_SINGLE_SSID;
+        MenuList.selectedItem=0;//remove selected item
         clearListBuffer();
         snprintf(getRow(0),AppBaseMenu::RowLength,"SSID:  %-22.21s", ScanResults[selectedItem].getSSID().c_str());
         snprintf(getRow(1),AppBaseMenu::RowLength,"Auth:  %s", ScanResults[selectedItem].getAuthModeString());
@@ -150,16 +157,20 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
         snprintf(getRow(4),AppBaseMenu::RowLength,"Capabilites:  B:%s N:%s G:%s LR:%s"
           ,ScanResults[selectedItem].isWirelessB()?"Y":"N", ScanResults[selectedItem].isWirelessN()?"Y":"N"
           ,ScanResults[selectedItem].isWirelessG()?"Y":"N", ScanResults[selectedItem].isWirelessLR()?"Y":"N");
+        snprintf(getRow(5),AppBaseMenu::RowLength,"Password:  %s", "XXXXX");
         snprintf(getRow(7),AppBaseMenu::RowLength,"Connect");
         snprintf(getRow(9),AppBaseMenu::RowLength,"Back");
       }
     } else {
+      ESP_LOGI(LOGTAG,"state = DISPLAY_SINGLE_SSID");
       snprintf(getRow(5),AppBaseMenu::RowLength,"Password:  %s", "XXXXX");
       if(selectedItem==7) {
         ESP_LOGI(LOGTAG,"CONNECT!!!!!!");
       } else if (9==selectedItem) {
         InternalState=INIT;
         ScanResults.clear();
+      } else {
+        MenuList.selectedItem=0;//remove selected item
       }
     }
   }

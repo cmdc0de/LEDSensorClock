@@ -15,6 +15,7 @@ public:
   typedef libesp::WiFi::SSIDTYPE SSIDTYPE;
   typedef libesp::WiFi::PASSWDTYPE PASSWDTYPE;
   static const char *LOGTAG;
+  static const char *MENUHEADER;
   static const char *WIFISID;
   static const char *WIFIPASSWD;
 	WiFiMenu();

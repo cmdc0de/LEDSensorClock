@@ -30,7 +30,7 @@ int32_t GUIListProcessor::process(libesp::Point2Ds &p, libesp::GUIListData *pl, 
 	for(int i=0;i<itemC;++i,currentY+=perRow) {
 		//ESP_LOGI(LOGTAG,"%d %d",int32_t(currentY),int32_t(currentY+perRow));
 		if(p.getY()>=currentY && p.getY()<(currentY+perRow)) {
-			if(p.getX()>=pl->x&&p.getX()<(pl->x+pl->w)) {
+			if(p.getX()>=pl->x && p.getX()<(pl->x+pl->w)) {
 				pl->selectedItem = i;
 				return GUI_ITEM_HIT;
 			}

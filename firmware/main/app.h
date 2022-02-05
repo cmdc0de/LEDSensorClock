@@ -14,6 +14,7 @@
 #include "mhz19btask.h"
 #include <nvs_memory.h>
 #include <adc.h>
+#include <freertos.h>
 
 namespace libesp {
 class GUI;
@@ -55,6 +56,7 @@ public:
   };
 public:
 	static const char *LOGTAG;
+	static const char *MENUHEADER;
 	static const int QUEUE_SIZE = 10;
 	static const int MSG_SIZE = sizeof(MyAppMsg*);
 	static const char *sYES;
@@ -108,6 +110,7 @@ private:
   int16_t CO2;
   libesp::NVS NVSStorage;
   libesp::ADC::Result LSensorResult;
+  SemaphoreHandle_t DisplayTouchSemaphore;
 private:
 	static MyApp mSelf;
 };
