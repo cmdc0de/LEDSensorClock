@@ -39,7 +39,8 @@ WiFiMenu::WiFiMenu() : AppBaseMenu(), WiFiEventHandler(), InternalQueueHandler()
   , NTPTime(), SSID(), Password(), Flags(0), ReTryCount(0), Items()
   , MenuList(MENUHEADER, Items, 0, 0, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), 0, ItemCount)
   , InternalState(INIT)
-	, MyLayout(&InterfaceElements[0],NUM_INTERFACE_ITEMS, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), false) {
+	, MyLayout(&InterfaceElements[0],NUM_INTERFACE_ITEMS, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), false)
+  , IC(&Password[0],Password.size()-1), Keyboard() {
 
 	InternalQueueHandler = xQueueCreateStatic(QUEUE_SIZE,MSG_SIZE,&InternalQueueBuffer[0],&InternalQueue);
 	MyLayout.reset();
@@ -166,7 +167,7 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
           ,ScanResults[selectedItem].isWirelessB()?"Y":"N", ScanResults[selectedItem].isWirelessN()?"Y":"N"
           ,ScanResults[selectedItem].isWirelessG()?"Y":"N", ScanResults[selectedItem].isWirelessLR()?"Y":"N");
         MyApp::get().getDisplay().drawString(5,50,&rowBuffer[0],RGBColor::WHITE);
-        snprintf(&rowBuffer[0],sizeof(rowBuffer),"Password:  %s", "XXXXX");
+        snprintf(&rowBuffer[0],sizeof(rowBuffer),"Password: ");
         MyApp::get().getDisplay().drawString(5,60,&rowBuffer[0],RGBColor::WHITE);
         MyLayout.draw(&MyApp::get().getDisplay());
       }
@@ -193,20 +194,17 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
           ESP_LOGI(LOGTAG,"BACK: %u", static_cast<uint32_t>(InternalState));
           break;
         default:
-          ESP_LOGI(LOGTAG, "CONNECT");
+          ESP_LOGI(LOGTAG, "CONNECT ssid: %s  pass: %s", SSID.c_str(), Password.c_str());
           InternalState = INIT; //FOR NOW
           ScanResults.clear();
           break;
-        }
-	      MyApp::get().getDisplay().fillScreen(RGBColor::BLACK);
-      } else {
-        MyLayout.draw(&MyApp::get().getDisplay());
-      }
-    } else {
-      char rowBuffer[64];
-      snprintf(&rowBuffer[0],sizeof(rowBuffer),"Password:  %s", "XXXXX");
-      MyApp::get().getDisplay().drawString(5,60,&rowBuffer[0],RGBColor::WHITE);
-    }
+        } 
+      } else if (penUp) {
+        Keyboard.processTouch(TouchPosInBuf);
+      } 
+    } 
+    MyLayout.draw(&MyApp::get().getDisplay());
+    Keyboard.process();
   }
 	return BaseMenu::ReturnStateContext(nextState);
 }

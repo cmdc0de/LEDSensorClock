@@ -7,6 +7,7 @@ set(srcs "./app.cpp"
   "./menus/appbase_menu.cpp"
   "./menus/gui_list_processor.cpp"
   "./menus/wifi_menu.cpp"
+  "./menus/virtual_key_board.cpp"
 )
 
 idf_component_register(SRCS "${srcs}"
