@@ -40,7 +40,8 @@ ErrorType CalibrationMenu::loadCalibrationData() {
 
 bool CalibrationMenu::hasBeenCalibrated() {
 	size_t size = sizeof(CalibrationLocations);
-	return CalibrationData.getBlob("caldata",&CalibrationLocations[0],size)!=ESP_OK;
+	bool retVal =  CalibrationData.getBlob("caldata",&CalibrationLocations[0],size)==ESP_OK;
+  return retVal;
 }
 
 void CalibrationMenu::calculate() {

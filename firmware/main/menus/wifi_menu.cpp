@@ -23,9 +23,9 @@ const char *WiFiMenu::MENUHEADER = "SSID                  RSSI  CH";
 const char *WiFiMenu::WIFISID = "WIFISID";
 const char *WiFiMenu::WIFIPASSWD = "WIFIPASSWD";
 
-static libesp::RectBBox2D BackBV(Point2Ds(35,95), 25, 10);
+static libesp::RectBBox2D BackBV(Point2Ds(35,130), 25, 10);
 static libesp::Button BackButton((const char *)"Back", uint16_t(0), &BackBV,RGBColor::BLUE, RGBColor::WHITE);
-static libesp::RectBBox2D ConnectBV(Point2Ds(125,95), 25, 10);
+static libesp::RectBBox2D ConnectBV(Point2Ds(125,130), 25, 10);
 static libesp::Button ConnectButton ((const char *)"Connect", uint16_t(1), &ConnectBV,RGBColor::BLUE, RGBColor::WHITE);
 static const int8_t NUM_INTERFACE_ITEMS = 2;
 static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&BackButton, &ConnectButton};
@@ -114,7 +114,7 @@ ErrorType WiFiMenu::onInit() {
   for(int i=0;i<ItemCount;++i) {
 		Items[i].text = getRow(i);
 		Items[i].id = i;
-		Items[i].setShouldScroll();
+		//Items[i].setShouldScroll();
 	}
  
   ScanResults.clear();
@@ -170,6 +170,9 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
         snprintf(&rowBuffer[0],sizeof(rowBuffer),"Password: ");
         MyApp::get().getDisplay().drawString(5,60,&rowBuffer[0],RGBColor::WHITE);
         MyLayout.draw(&MyApp::get().getDisplay());
+        IC.clear();
+        Keyboard.init(VirtualKeyBoard::STDKBNames, &IC, 0, MyApp::get().getLastCanvasWidthPixel(), 85 
+            , RGBColor::WHITE, RGBColor::BLACK, RGBColor::BLUE);
       }
     } else {
       MyApp::get().getGUI().drawList(&MenuList);
@@ -201,6 +204,9 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
         } 
       } else if (penUp) {
         Keyboard.processTouch(TouchPosInBuf);
+        char rowBuffer[64];
+        snprintf(&rowBuffer[0],sizeof(rowBuffer),"Password: %s", Password.c_str());
+        MyApp::get().getDisplay().drawString(5,60,&rowBuffer[0],RGBColor::WHITE);
       } 
     } 
     MyLayout.draw(&MyApp::get().getDisplay());

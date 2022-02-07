@@ -251,7 +251,7 @@ libesp::ErrorType MyApp::onInit() {
     ESP_LOGE(LOGTAG,"Error Num :%d Msg: %s", et.getErrT(), et.toString());
   }
 
-  if(MyCalibrationMenu.hasBeenCalibrated()) {
+  if(!MyCalibrationMenu.hasBeenCalibrated()) {
 		setCurrentMenu(getCalibrationMenu());
 	} else {
     if(MyWiFiMenu.hasWiFiBeenSetup().ok()) {

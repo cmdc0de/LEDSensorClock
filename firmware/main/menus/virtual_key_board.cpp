@@ -28,6 +28,11 @@ void VirtualKeyBoard::InputHandleContext::addChar(char b) {
 	}
 }
 
+void VirtualKeyBoard::InputHandleContext::clear() {
+  CurrentPos = 0;
+  memset(&Buf[0],0,Size);
+}
+
 //Remember CurrentPos here means the current position in the input buffer not the position in the keyboard like below.
 void VirtualKeyBoard::InputHandleContext::backspace() {
 	Buf[CurrentPos] = '\0';
@@ -65,7 +70,7 @@ void VirtualKeyBoard::processTouch(const libesp::Point2Ds &touchPos) {
 	  uint8_t FontPixelHeight = MyApp::get().getDisplay().getFont()->FontHeight;
   	uint8_t FontPixelWidth = MyApp::get().getDisplay().getFont()->FontWidth;
 	  for(int i=0,y=0;i<SizeOfKeyboard && y < (MyApp::get().getCanvasHeight()-(y*FontPixelHeight));i+=CharsPerRow, ++y) {
-      if(touchPos.getY()>=(YDisplayPos+(y*FontPixelHeight)) && touchPos.getY()>=(YDisplayPos+((y+1)*FontPixelHeight))) {
+      if(touchPos.getY()>=(YDisplayPos+(y*FontPixelHeight)) && touchPos.getY()<=(YDisplayPos+((y+1)*FontPixelHeight))) {
         uint32_t arrayPos = y*CharsPerRow+(touchPos.getX()/FontPixelWidth);
         InputContext->addChar(VKB[arrayPos]);
       }
