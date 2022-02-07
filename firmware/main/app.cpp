@@ -19,6 +19,7 @@
 #include "menus/menu_state.h"
 #include "menus/calibration_menu.h"
 #include "menus/wifi_menu.h"
+#include "menus/setting_menu.h"
 #include <app/display_message_state.h>
 #include "device/leds/apa102.h"
 #include "spibus.h"
@@ -258,7 +259,7 @@ libesp::ErrorType MyApp::onInit() {
       et = MyWiFiMenu.connect();
   		setCurrentMenu(getMenuState());
     } else {
-      setCurrentMenu(getWiFiMenu());
+      setCurrentMenu(getSettingMenu());
     }
 	}
 	return et;
@@ -412,9 +413,14 @@ libesp::GUI &MyApp::getGUI() {
 
 MenuState MyMenuState;
 libesp::DisplayMessageState DMS;
+SettingMenu MySettingMenu;
 
 MenuState *MyApp::getMenuState() {
 	return &MyMenuState;
+}
+
+SettingMenu *MyApp::getSettingMenu() {
+	return &MySettingMenu;
 }
 
 CalibrationMenu *MyApp::getCalibrationMenu() {

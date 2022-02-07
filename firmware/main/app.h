@@ -26,6 +26,7 @@ class XPT2046;
 class CalibrationMenu;
 class MenuState;
 class WiFiMenu;
+class SettingMenu;
 
 enum ERRORS {
 	APP_OK = libesp::ErrorType::APP_OK
@@ -78,6 +79,7 @@ public:
 	libesp::DisplayDevice &getDisplay();
 	libesp::GUI &getGUI();
 	MenuState *getMenuState();
+  SettingMenu *getSettingMenu();
 	CalibrationMenu *getCalibrationMenu();
 	WiFiMenu *getWiFiMenu();
 	libesp::DisplayMessageState *getDisplayMessageState(libesp::BaseMenu *, const char *msg, uint32_t msDisplay);

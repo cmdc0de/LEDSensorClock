@@ -75,7 +75,7 @@ ErrorType WiFiMenu::clearConnectData() {
 
 ErrorType WiFiMenu::initWiFi() {
   MyWiFi.setWifiEventHandler(this);
-  ErrorType et = MyWiFi.init(WIFI_MODE_STA);
+  ErrorType et = MyWiFi.init(WIFI_MODE_APSTA);
   if(et.ok()) {
     et = NTPTime.init(MyApp::get().getNVS(),true,time_sync_cb);
   }
@@ -139,6 +139,7 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
     }
     MyApp::get().getGUI().drawList(&MenuList);
     InternalState = SCAN_RESULTS;
+    MyWiFi.startAP("esp32Test", "nopassword");
   }
 
 

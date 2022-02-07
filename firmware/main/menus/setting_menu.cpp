@@ -38,12 +38,15 @@ ErrorType SettingMenu::onInit() {
 		}
 	}
 	MyApp::get().getTouch().addObserver(TouchQueueHandle);
+	MyApp::get().getDisplay().fillScreen(RGBColor::BLACK);
 	return ErrorType();
 }
 
 BaseMenu::ReturnStateContext SettingMenu::onRun() {
 	BaseMenu *nextState = this;
 	TouchNotification *pe = nullptr;
+
+  MyApp::get().getDisplay().drawString(5,15,"SETTING MENU");
 	return ReturnStateContext(nextState);
 }
 
