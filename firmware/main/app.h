@@ -15,6 +15,7 @@
 #include <nvs_memory.h>
 #include <adc.h>
 #include <freertos.h>
+#include <device/display/layout.h>
 
 namespace libesp {
 class GUI;
@@ -68,6 +69,7 @@ public:
 	//reminder ESP32 has 160KiB static and DRAM So a 1:1 buffer doesn't fit.
 	static const uint16_t FRAME_BUFFER_HEIGHT	= 144;
 	static const uint16_t FRAME_BUFFER_WIDTH	= 192;
+  static const uint16_t CLOSE_BTN_ID = 1000;
 
 	static MyApp &get();
 public:
@@ -95,6 +97,7 @@ public:
   libesp::NVS &getNVS() { return NVSStorage;}
   uint32_t getLightSensorRaw() { return LSensorResult.RawAvg;}
   uint32_t getLightCalcVoltage() { return LSensorResult.CalculatedVoltage;}
+  libesp::Button &getCloseButton();
 protected:
 	MyApp();
   void handleMessages();

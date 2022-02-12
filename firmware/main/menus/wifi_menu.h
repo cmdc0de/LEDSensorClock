@@ -17,28 +17,34 @@ public:
   typedef libesp::WiFi::PASSWDTYPE PASSWDTYPE;
   static const char *LOGTAG;
   static const char *MENUHEADER;
-  static const char *WIFISID;
-  static const char *WIFIPASSWD;
-	WiFiMenu();
-	virtual ~WiFiMenu();
   static const uint32_t MAX_RETRY_CONNECT_COUNT = 10;
+
   static const uint32_t NOSTATE = 0;
   static const uint32_t CONNECTING = 1<<0;
   static const uint32_t CONNECTED = 1<<1;
   static const uint32_t WIFI_READY = 1<<2;
   static const uint32_t HAS_IP = 1<<3;
   static const uint32_t SCAN_COMPLETE = 1<<4;
+  static const uint32_t AP_START = 1<<5;
+
+
   enum INTERNAL_STATE {
     INIT = 0
+    , CONFIG_CONNECTION
+    , AWAITING_AP
     , SCAN_RESULTS
     , DISPLAY_SINGLE_SSID
   };
 public:
+	WiFiMenu();
+	virtual ~WiFiMenu();
   libesp::ErrorType hasWiFiBeenSetup();
   libesp::ErrorType connect();
   bool isConnected();
   libesp::ErrorType initWiFi();
   libesp::ErrorType clearConnectData();
+  libesp::ErrorType startAP();
+  bool stopAP();
 public:
   virtual libesp::ErrorType staStart();
   virtual libesp::ErrorType staStop();

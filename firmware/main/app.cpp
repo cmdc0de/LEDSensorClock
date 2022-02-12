@@ -64,6 +64,8 @@ static XPT2046 TouchTask(PIN_NUM_TOUCH_IRQ,true);
 static CalibrationMenu MyCalibrationMenu("nvs");
 static WiFiMenu MyWiFiMenu;
 
+static libesp::AABBox2D Close(Point2Ds(185,7),6);
+static libesp::Button CloseButton((const char *)"X", MyApp::CLOSE_BTN_ID, &Close,RGBColor::RED, RGBColor::BLUE);
 
 const char *MyErrorMap::toString(int32_t err) {
 	return "TODO";

@@ -26,7 +26,6 @@ static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&TempLabel, &Hu
 MenuState::MenuState() :
 	AppBaseMenu(), //MenuList("Main Menu", Items, 0, 0, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), 0, ItemCount),
 	MyLayout(&InterfaceElements[0],NUM_INTERFACE_ITEMS, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), false){
-	
 	InternalQueueHandler = xQueueCreateStatic(QUEUE_SIZE,MSG_SIZE,&InternalQueueBuffer[0],&InternalQueue);
 	MyLayout.reset();
 }
