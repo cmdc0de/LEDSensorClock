@@ -2,10 +2,10 @@
   "scanresults": [
     {
       "id": 1,
-      "ssid": sid1
+      "ssid": "sid1"
       "rssi": -9
       "channel": 11
-      "authMode": WPA2PSK
+      "authMode": "WPA2PSK"
     }
   ],
   "calibrationdata": {
