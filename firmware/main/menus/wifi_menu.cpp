@@ -20,9 +20,13 @@ static StaticQueue_t InternalQueue;
 static uint8_t InternalQueueBuffer[WiFiMenu::QUEUE_SIZE*WiFiMenu::MSG_SIZE] = {0};
 const char *WiFiMenu::LOGTAG = "WIFIMENU";
 const char *WiFiMenu::MENUHEADER = "Connection Log";
+const char *WiFiMenu::WIFISID = "WIFISID";
+const char *WiFiMenu::WIFIPASSWD = "WIFIPASSWD";
 
 static const int8_t NUM_INTERFACE_ITEMS = 1;
-static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {MyApp::get().getCloseButton()};
+static libesp::AABBox2D Close(Point2Ds(185,7),6);
+static libesp::Button CloseButton((const char *)"X", MyApp::CLOSE_BTN_ID, &Close,RGBColor::RED, RGBColor::BLUE);
+static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&CloseButton};
 
 
 void time_sync_cb(struct timeval *tv) {
@@ -125,7 +129,7 @@ bool WiFiMenu::stopAP() {
 }
 
 void WiFiMenu::handleAP() {
-  if(isFlagged(AP_START)) {
+  if(isFlagSet(AP_START)) {
     //if web server started ()
   }
 }
@@ -161,6 +165,8 @@ libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
       handleAP();
       break;
     case AWAITING_AP:
+      break;
+    default:
       break;
   }
 	return BaseMenu::ReturnStateContext(nextState);

@@ -17,6 +17,8 @@ public:
   typedef libesp::WiFi::PASSWDTYPE PASSWDTYPE;
   static const char *LOGTAG;
   static const char *MENUHEADER;
+  static const char *WIFISID;
+  static const char *WIFIPASSWD;
   static const uint32_t MAX_RETRY_CONNECT_COUNT = 10;
 
   static const uint32_t NOSTATE = 0;
@@ -62,6 +64,8 @@ protected:
 	virtual libesp::ErrorType onInit();
 	virtual libesp::BaseMenu::ReturnStateContext onRun();
 	virtual libesp::ErrorType onShutdown();
+  void handleAP();
+  bool isFlagSet(uint32_t f) {return ((f&Flags)!=0);}
 private:
 	QueueHandle_t InternalQueueHandler;
   libesp::WiFi MyWiFi;
@@ -75,8 +79,6 @@ private:
   INTERNAL_STATE InternalState;
 	static const uint16_t ItemCount = uint16_t(sizeof(Items) / sizeof(Items[0]));
 	libesp::StaticGridLayout MyLayout;
-  VirtualKeyBoard::InputHandleContext IC;
-  VirtualKeyBoard Keyboard;
 };
 
 #endif

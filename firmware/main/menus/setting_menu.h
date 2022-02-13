@@ -8,6 +8,7 @@
 #define SETTING_STATE_H_
 
 #include "appbase_menu.h"
+#include <device/display/layout.h>
 
 namespace libesp {
 	class TouchNotification;

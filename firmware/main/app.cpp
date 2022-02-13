@@ -28,11 +28,13 @@
 #include "pinconfig.h"
 #include <device/sensor/dht11.h>
 #include "appmsg.h"
+#include <math/point.h>
 
 using libesp::ErrorType;
 using libesp::System;
 using libesp::FreeRTOS;
 using libesp::RGBB;
+using libesp::RGBColor;
 using libesp::APA102c;
 using libesp::SPIBus;
 using libesp::DisplayILI9341;
@@ -40,10 +42,12 @@ using libesp::XPT2046;
 using libesp::GUI;
 using libesp::DisplayMessageState;
 using libesp::BaseMenu;
+using libesp::Point2Ds;
 
 const char *MyApp::LOGTAG = "AppTask";
 const char *MyApp::sYES = "Yes";
 const char *MyApp::sNO = "No";
+//const uint16_t MyApp::CLOSE_BTN_ID = 1000;
 
 #define START_ROT libesp::DisplayILI9341::LANDSCAPE_TOP_LEFT
 static const uint16_t PARALLEL_LINES = 1;
@@ -88,6 +92,10 @@ MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) ,DHT22T()
 
 MyApp::~MyApp() {
 
+}
+
+libesp::Button &MyApp::getCloseButton() {
+  return CloseButton;
 }
 
 uint8_t *MyApp::getBackBuffer() {
