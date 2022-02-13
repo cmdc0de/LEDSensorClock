@@ -2,16 +2,16 @@
   "scanresults": [
     {
       "id": 1,
-      "ssid": "sid1"
-      "rssi": "-9"
-      "channel": "11"
-      "authMode": "WPA2PSK"
+      "ssid": sid1
+      "rssi": -9
+      "channel": 11
+      "authMode": WPA2PSK
     }
   ],
   "calibrationdata": {
-    "xmin": "0"
-    "ymin": "0"
-    "xmax": "10"
-    "ymax": "10"
+    "xmin": 0
+    "ymin": 0
+    "xmax": 1
+    "ymax": 10
   }
 }
