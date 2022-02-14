@@ -6,6 +6,20 @@
       "rssi": -9,
       "channel": 11,
       "authMode": "WPA2PSK"
+    },
+    {
+      "id": 2,
+      "ssid": "sid2",
+      "rssi": -94,
+      "channel": 9,
+      "authMode": "WPA2PSK"
+    },
+    {
+      "id": 3,
+      "ssid": "sid4",
+      "rssi": -89,
+      "channel": 7,
+      "authMode": "WPA2PSK"
     }
   ],
   "calibrationdata": {
