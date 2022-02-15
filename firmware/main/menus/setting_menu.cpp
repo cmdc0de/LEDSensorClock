@@ -9,21 +9,26 @@
 #include "menu_state.h"
 #include "../app.h"
 #include <device/touch/XPT2046.h>
+#include <math/point.h>
 #include <esp_log.h>
+#include "calibration_menu.h"
+#include "wifi_menu.h"
+#include <math/rectbbox.h>
 
 using libesp::ErrorType;
 using libesp::BaseMenu;
 using libesp::RGBColor;
 using libesp::TouchNotification;
 using libesp::Button;
+using libesp::Point2Ds;
 
 static StaticQueue_t TouchQueue;
 static uint8_t TouchQueueBuffer[SettingMenu::TOUCH_QUEUE_SIZE*SettingMenu::TOUCH_MSG_SIZE] = {0};
 const char *SettingMenu::LOGTAG = "SettingMenu";
 
-static libesp::AABBox2D StartAP(Point2Ds(30,40), 30);
+static libesp::RectBBox2D StartAP(Point2Ds(45,25), 40, 15);
 static libesp::Button StartAPBtn((const char *)"Start AP", uint16_t(0), &StartAP, RGBColor::BLUE, RGBColor::WHITE);
-static libesp::AABBox2D CalBV(Point2Ds(100,40), 30);
+static libesp::RectBBox2D CalBV(Point2Ds(145,25), 40, 15);
 static libesp::Button CalBtn((const char *)"Re-Calibrate", uint16_t(1), &CalBV, RGBColor::BLUE, RGBColor::WHITE);
 
 static const int8_t NUM_INTERFACE_ITEMS = 2;
@@ -59,7 +64,7 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
 	Point2Ds TouchPosInBuf;
 	libesp::Widget *widgetHit = nullptr;
 	bool penUp = false;
-	if(xQueueReceive(InternalQueueHandler, &pe, 0)) {
+	if(xQueueReceive(TouchQueueHandle, &pe, 0)) {
 		ESP_LOGI(LOGTAG,"que");
 		Point2Ds screenPoint(pe->getX(),pe->getY());
 		TouchPosInBuf = MyApp::get().getCalibrationMenu()->getPickPoint(screenPoint);
@@ -72,7 +77,7 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
 		  ESP_LOGI(LOGTAG, "Widget %s hit\n", widgetHit->getName());
 		  switch(widgetHit->getWidgetID()) {
 		  case 0:
-        MyApp::get().getWiFiMenu().startAP();
+        MyApp::get().getWiFiMenu()->startAP();
 	      nextState = MyApp::get().getWiFiMenu();
 			  break;
       case 1:
@@ -82,6 +87,8 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
 	  }
 	}
 
+  MyLayout.draw(&MyApp::get().getDisplay());
+
 	return ReturnStateContext(nextState);
 }
 
@@ -89,3 +96,5 @@ ErrorType SettingMenu::onShutdown() {
 	MyApp::get().getTouch().removeObserver(TouchQueueHandle);
 	return ErrorType();
 }
+
+
