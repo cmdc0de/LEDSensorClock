@@ -1,55 +1,59 @@
-import React, { useState, useEffect }  from 'react';
+import React, { useEffect }  from 'react';
+import { useSelector, useDispatch } from 'react-redux'
 import "../App.css"
+import {selectAllAPs,fetchAps} from '../features/scan/scanSlice'
 
-const Home = () => {
-  const [error, setError] = useState(null);
-    const [isLoaded, setIsLoaded] = useState(false);
-    const [aps, setAps] = useState([]);    
-
-  useEffect(() => {
-        fetch("https://my-json-server.typicode.com/cmdc0de/LEDSensorClock/scanresults")
-            .then(res => res.json())
-            .then(
-                (data) => {
-                    setIsLoaded(true);
-                    setAps(data);
-                },
-                (error) => {
-                    setIsLoaded(true);
-                    setError(error);
-                }
-            )
-      }, [])
-
-  if (error) {
-        return <div>Error: {error.message}</div>;
-    } else if (!isLoaded) {
-        return <div>Loading...</div>;
-    } else {
-      return (
-        <table class="tg">
-          <thead>
-              <tr>
-                <td class="tg-e6ik"> id</td>
-                <td class="tg-e6ik"> ssid</td>
-                <td class="tg-e6ik"> strength</td>
-                <td class="tg-e6ik"> channel</td>
-                <td class="tg-e6ik"> AuthMode</td>
-              </tr>
-          </thead>
-            {aps.map(ap => (
-              <tr>
-                <td class="tg-e6ik"> {ap.id}</td>
-                <td class="tg-e6ik"> {ap.ssid}</td>
-                <td class="tg-e6ik"> {ap.rssi}</td>
-                <td class="tg-e6ik"> {ap.channel}</td>
-                <td class="tg-e6ik"> {ap.authMode}</td>
-              </tr>
-                ))}
-          </table>
-        );
-    }
+const ApRow = ({ ap }) => {
+  return (
+    <tr>
+      <td class="tg-e6ik"> {ap.id}</td>
+      <td class="tg-e6ik"> {ap.ssid}</td>
+      <td class="tg-e6ik"> {ap.rssi}</td>
+      <td class="tg-e6ik"> {ap.channel}</td>
+      <td class="tg-e6ik"> {ap.authMode}</td>
+    </tr>
+  )
 }
 
-export default Home;
+const Scan = () => {
+  const dispatch = useDispatch()
+  const aps = useSelector(selectAllAPs)
+  const postStatus = useSelector((state) => state.scanResults.status)
+  const error = useSelector((state) => state.scanResults.error)
+
+  useEffect(() => { 
+    if (postStatus === 'idle') {
+      dispatch(fetchAps())
+    }
+  }, [postStatus, dispatch])
+
+  let content
+
+  if (postStatus==='loading') {
+    content = <div>Loading...</div>;
+  } else if (postStatus === 'succeeded') {
+    content = aps.map((ap) => (
+      <ApRow key={ap.id} ap={ap} />
+    ))
+  } else if(postStatus==='failed') {
+    return <div>Error: {error}</div>;
+  }
+
+  return (
+    <table class="tg">
+      <thead>
+        <tr>
+          <td class="tg-e6ik"> id</td>
+          <td class="tg-e6ik"> ssid</td>
+          <td class="tg-e6ik"> strength</td>
+          <td class="tg-e6ik"> channel</td>
+          <td class="tg-e6ik"> AuthMode</td>
+        </tr>
+      </thead>
+      {content}
+    </table>
+  );
+}
+
+export default Scan;
 
