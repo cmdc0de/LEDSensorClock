@@ -7,15 +7,10 @@ const initialState = {
   error: null,
 }
 
-//export const fetchAps = createAsyncThunk('https://my-json-server.typicode.com/cmdc0de/LEDSensorClock/scanresults', async () => {
-//  const response = await client.get('https://my-json-server.typicode.com/cmdc0de/LEDSensorClock/scanresults')
-//  return response.data
-//})
-
-export const fetchAps = () => {
-  const response = client.get('https://my-json-server.typicode.com/cmdc0de/LEDSensorClock/scanresults')
+export const fetchAps = createAsyncThunk('aps/fetchAps', async () => {
+  const response = await client.get('https://my-json-server.typicode.com/cmdc0de/LEDSensorClock/scanresults')
   return response.data
-}
+})
 
 export const scanSlice = createSlice({
   name: 'scanResults',
@@ -29,7 +24,7 @@ export const scanSlice = createSlice({
         .addCase(fetchAps.fulfilled, (state, action) => {
           state.status = 'succeeded'
           // Add any fetched posts to the array
-          state.posts = state.posts.concat(action.payload)
+          state.aps = state.aps.concat(action.payload)
         })
         .addCase(fetchAps.rejected, (state, action) => {
           state.status = 'failed'

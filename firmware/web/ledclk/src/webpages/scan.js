@@ -18,8 +18,8 @@ const ApRow = ({ ap }) => {
 const Scan = () => {
   const dispatch = useDispatch()
   const aps = useSelector(selectAllAPs)
-  const postStatus = useSelector((state) => state.scanResults.status)
-  const error = useSelector((state) => state.scanResults.error)
+  const postStatus = useSelector(state => state.scanResults.status)
+  const error = useSelector(state => state.scanResults.error)
 
   useEffect(() => { 
     if (postStatus === 'idle') {
