@@ -7,7 +7,7 @@ const initialState = {
   error: null,
 }
 
-export const fetchAps = createAsyncThunk('aps/fetchAps', async () => {
+export const fetchAps = createAsyncThunk('scanResults/fetchAps', async () => {
   const response = await client.get('https://my-json-server.typicode.com/cmdc0de/LEDSensorClock/scanresults')
   return response.data
 })
@@ -16,21 +16,21 @@ export const scanSlice = createSlice({
   name: 'scanResults',
   initialState,
   reducers: {
-    extraReducers(builder) {
-      builder
-        .addCase(fetchAps.pending, (state, action) => {
-          state.status = 'loading'
-        })
-        .addCase(fetchAps.fulfilled, (state, action) => {
-          state.status = 'succeeded'
-          // Add any fetched posts to the array
-          state.aps = state.aps.concat(action.payload)
-        })
-        .addCase(fetchAps.rejected, (state, action) => {
-          state.status = 'failed'
-          state.error = action.error.message
-        })
-    },
+  },
+  extraReducers(builder) {
+    builder
+      .addCase(fetchAps.pending, (state, action) => {
+        state.status = 'loading'
+      })
+      .addCase(fetchAps.fulfilled, (state, action) => {
+        state.status = 'succeeded'
+        // Add any fetched posts to the array
+        state.aps = state.aps.concat(action.payload)
+      })
+      .addCase(fetchAps.rejected, (state, action) => {
+        state.status = 'failed'
+        state.error = action.error.message
+      })
   }
 })
 
