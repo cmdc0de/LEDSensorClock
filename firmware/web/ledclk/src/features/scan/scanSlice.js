@@ -41,7 +41,5 @@ export default scanSlice.reducer
 
 export const selectAllAPs = (state) => state.scanResults.aps
 
-export const selectPostById = (state, id) => 
-  state.scanResults.aps.find((ap) => ap.id === id)
-
+export const selectAPById = (state, id) => state.scanResults.aps.find((ap) => ap.id === id)
 

@@ -1,16 +1,17 @@
 import React, { useEffect }  from 'react';
 import { useSelector, useDispatch } from 'react-redux'
+import { Link } from 'react-router-dom'
 import "../App.css"
 import {selectAllAPs,fetchAps} from '../features/scan/scanSlice'
 
 const ApRow = ({ ap }) => {
   return (
     <tr>
-      <td class="tg-e6ik"> {ap.id}</td>
-      <td class="tg-e6ik"> {ap.ssid}</td>
-      <td class="tg-e6ik"> {ap.rssi}</td>
-      <td class="tg-e6ik"> {ap.channel}</td>
-      <td class="tg-e6ik"> {ap.authMode}</td>
+      <td className="tg-e6ik"> <Link to={`/scan/${ap.id}`}> {ap.id} </Link></td>
+      <td className="tg-e6ik"> {ap.ssid}</td>
+      <td className="tg-e6ik"> {ap.rssi}</td>
+      <td className="tg-e6ik"> {ap.channel}</td>
+      <td className="tg-e6ik"> {ap.authMode}</td>
     </tr>
   )
 }
@@ -40,17 +41,19 @@ const Scan = () => {
   }
 
   return (
-    <table class="tg">
+    <table className="tg">
       <thead>
         <tr>
-          <td class="tg-e6ik"> id</td>
-          <td class="tg-e6ik"> ssid</td>
-          <td class="tg-e6ik"> strength</td>
-          <td class="tg-e6ik"> channel</td>
-          <td class="tg-e6ik"> AuthMode</td>
+          <td className="tg-e6ik"> id</td>
+          <td className="tg-e6ik"> ssid</td>
+          <td className="tg-e6ik"> strength</td>
+          <td className="tg-e6ik"> channel</td>
+          <td className="tg-e6ik"> AuthMode</td>
         </tr>
       </thead>
+      <tbody>
       {content}
+      </tbody>
     </table>
   );
 }
