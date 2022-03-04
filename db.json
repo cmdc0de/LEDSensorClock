@@ -22,10 +22,12 @@
       "authMode": "WPA2PSK"
     }
   ],
-  "calibrationdata": {
-    "xmin": 0,
-    "ymin": 0,
-    "xmax": 1,
-    "ymax": 10
-  }
+  "calibrationdata": [
+    {
+      "xmin": 0,
+      "ymin": 0,
+      "xmax": 1,
+      "ymax": 10
+    }
+  ],
 }

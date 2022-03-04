@@ -7,6 +7,7 @@ const Home = () => {
         <div>
             <img src={logo} className="App-logo" alt="logo" />
             <h1><a href="/scan"> Scan</a></h1>
+            <h1><a href="/calibration"> Calibration Data </a></h1>
             <Counter/>
         </div>
     );
