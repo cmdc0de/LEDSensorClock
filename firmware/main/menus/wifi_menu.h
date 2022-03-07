@@ -69,6 +69,7 @@ protected:
   void handleAP();
   bool isFlagSet(uint32_t f) {return ((f&Flags)!=0);}
   void setContentTypeFromFile(httpd_req_t *req, const char *filepath);
+  libesp::ErrorType setWiFiConnectionData(const char *ssid, const char *pass);
 private:
   libesp::WiFi MyWiFi;
   libesp::NTP NTPTime;

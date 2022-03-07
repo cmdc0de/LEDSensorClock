@@ -18,19 +18,11 @@ using libesp::Point2Ds;
 using libesp::TouchNotification;
 using libesp::RGBColor;
 
-//static StaticQueue_t InternalQueue;
-//static uint8_t InternalQueueBuffer[WiFiMenu::QUEUE_SIZE*WiFiMenu::MSG_SIZE] = {0};
 const char *WiFiMenu::LOGTAG = "WIFIMENU";
 const char *WiFiMenu::MENUHEADER = "Connection Log";
 const char *WiFiMenu::WIFISID = "WIFISID";
 const char *WiFiMenu::WIFIPASSWD = "WIFIPASSWD";
-
-/*
-static const int8_t NUM_INTERFACE_ITEMS = 1;
-static libesp::AABBox2D Close(Point2Ds(185,7),6);
-static libesp::Button CloseButton((const char *)"X", MyApp::CLOSE_BTN_ID, &Close,RGBColor::RED, RGBColor::BLUE);
-static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&CloseButton};
-*/
+static etl::vector<libesp::WiFiAPRecord,16> ScanResults;
 
 void time_sync_cb(struct timeval *tv) {
     ESP_LOGI(WiFiMenu::LOGTAG, "Notification of a time synchronization event");
@@ -176,6 +168,14 @@ ErrorType WiFiMenu::hasWiFiBeenSetup() {
   return et;
 }
 
+ErrorType WiFiMenu::setWiFiConnectionData(const char *ssid, const char *pass) {
+  ErrorType et = MyApp::get().getNVS().setValue(WIFISID, ssid);
+  if(et.ok()) {
+    et = MyApp::get().getNVS().setValue(WIFIPASSWD,pass);
+  }
+  return et;
+}
+
 ErrorType WiFiMenu::clearConnectData() {
   ErrorType et = MyApp::get().getNVS().eraseKey(WIFISID);
   if(!et.ok()) {
@@ -236,7 +236,6 @@ void WiFiMenu::handleAP() {
   }
 }
 
-static etl::vector<libesp::WiFiAPRecord,16> ScanResults;
 esp_err_t WiFiMenu::handleScan(httpd_req_t *req) {
   httpd_resp_set_type(req, "application/json");
   cJSON *root = cJSON_CreateArray();
@@ -259,8 +258,39 @@ esp_err_t WiFiMenu::handleScan(httpd_req_t *req) {
 }
 
 esp_err_t WiFiMenu::handleSetConData(httpd_req_t *req) {
-  esp_err_t et = ESP_OK;
-  return et;
+  ErrorType et = ESP_OK;
+  char buf[256];
+
+  int total_len = req->content_len;
+  int cur_len = 0;
+  int received = 0;
+  if (total_len >= sizeof(buf)) {
+    /* Respond with 500 Internal Server Error */
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "content too long");
+    return ESP_FAIL;
+  }
+  while (cur_len < total_len) {
+    received = httpd_req_recv(req, buf + cur_len, total_len);
+    if (received <= 0) {
+      /* Respond with 500 Internal Server Error */
+      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to post control value");
+      return ESP_FAIL;
+    }
+    cur_len += received;
+  }
+  buf[total_len] = '\0';
+
+  cJSON *root = cJSON_Parse(buf);
+  int id = cJSON_GetObjectItem(root, "id")->valueint;
+  const char *passwd = cJSON_GetObjectItem(root, "password")->string;
+  if(id>0 && id<ScanResults.size()) {
+    et = setWiFiConnectionData(ScanResults[id].getSSID().c_str(), passwd);
+  } else {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "invalid ID");
+  }
+  cJSON_Delete(root);
+  httpd_resp_sendstr(req, "Post control value successfully");
+  return et.getErrT();
 }
 
 esp_err_t WiFiMenu::handleCalibration(httpd_req_t *req) {
