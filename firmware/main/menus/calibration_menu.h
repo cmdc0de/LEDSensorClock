@@ -6,6 +6,7 @@
 #include <device/touch/XPT2046.h>
 #include <nvs_memory.h>
 #include <math/point.h>
+#include <cJSON.h>
 
 class CalibrationMenu : public AppBaseMenu {
 public:
@@ -28,6 +29,8 @@ public:
 	libesp::ErrorType initNVS();
 	libesp::Point2Ds getPickPoint(const libesp::Point2Ds &pickPos);
 	bool hasBeenCalibrated();
+  void calibrationData(cJSON *sr);
+  void eraseCalibration();
 protected:
 	virtual libesp::ErrorType onInit();
 	virtual libesp::BaseMenu::ReturnStateContext onRun();

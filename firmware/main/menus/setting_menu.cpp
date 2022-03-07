@@ -14,6 +14,8 @@
 #include "calibration_menu.h"
 #include "wifi_menu.h"
 #include <math/rectbbox.h>
+#include <net/webserver.h>
+#include <app/display_message_state.h>
 
 using libesp::ErrorType;
 using libesp::BaseMenu;
@@ -78,7 +80,8 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
 		  switch(widgetHit->getWidgetID()) {
 		  case 0:
         MyApp::get().getWiFiMenu()->startAP();
-	      nextState = MyApp::get().getWiFiMenu();
+	      //nextState = MyApp::get().getWiFiMenu();
+	      nextState = MyApp::get().getDisplayMessageState(this, "startin AP", 5000);
 			  break;
       case 1:
         nextState = MyApp::get().getCalibrationMenu();
@@ -94,6 +97,7 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
 
 ErrorType SettingMenu::onShutdown() {
 	MyApp::get().getTouch().removeObserver(TouchQueueHandle);
+  MyApp::get().getWiFiMenu()->stopAP();
 	return ErrorType();
 }
 

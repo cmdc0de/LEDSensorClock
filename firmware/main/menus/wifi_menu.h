@@ -1,7 +1,6 @@
 #ifndef WIFI_STATE_H
 #define WIFI_STATE_H
 
-#include "appbase_menu.h"
 #include <device/touch/XPT2046.h>
 #include <net/wifi.h>
 #include <net/networktimeprotocol.h>
@@ -9,7 +8,7 @@
 #include <device/display/layout.h>
 #include <net/webserver.h>
 
-class WiFiMenu: public AppBaseMenu, libesp::WiFiEventHandler {
+class WiFiMenu: public libesp::WiFiEventHandler {
 public:
 	static const int QUEUE_SIZE = 10;
 	static const int MSG_SIZE = sizeof(libesp::TouchNotification*);
@@ -47,6 +46,12 @@ public:
   libesp::ErrorType clearConnectData();
   libesp::ErrorType startAP();
   bool stopAP();
+  esp_err_t handleRoot(httpd_req_t *req);
+  esp_err_t handleScan(httpd_req_t *req);
+  esp_err_t handleSetConData(httpd_req_t *req);
+  esp_err_t handleCalibration(httpd_req_t *req);
+  esp_err_t handleResetCalibration(httpd_req_t *req);
+  esp_err_t handleSystemInfo(httpd_req_t *req);
 public:
   virtual libesp::ErrorType staStart();
   virtual libesp::ErrorType staStop();
@@ -61,24 +66,16 @@ public:
 	virtual libesp::ErrorType staScanDone(system_event_sta_scan_done_t *info);
 	virtual libesp::ErrorType staAuthChange(system_event_sta_authmode_change_t *info);
 protected:
-	virtual libesp::ErrorType onInit();
-	virtual libesp::BaseMenu::ReturnStateContext onRun();
-	virtual libesp::ErrorType onShutdown();
   void handleAP();
   bool isFlagSet(uint32_t f) {return ((f&Flags)!=0);}
+  void setContentTypeFromFile(httpd_req_t *req, const char *filepath);
 private:
-	QueueHandle_t InternalQueueHandler;
   libesp::WiFi MyWiFi;
   libesp::NTP NTPTime;
   SSIDTYPE    SSID;
   PASSWDTYPE  Password;
   uint32_t    Flags;
   uint16_t    ReTryCount;
-	libesp::GUIListItemData Items[AppBaseMenu::NumRows];
-	libesp::GUIListData MenuList;
-  INTERNAL_STATE InternalState;
-	static const uint16_t ItemCount = uint16_t(sizeof(Items) / sizeof(Items[0]));
-	libesp::StaticGridLayout MyLayout;
   libesp::HTTPWebServer WebServer;
 };
 

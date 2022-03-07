@@ -8,6 +8,8 @@
 #include <esp_wifi.h>
 #include "menu_state.h"
 #include <math/rectbbox.h>
+#include <cJSON.h>
+#include <system.h>
 
 using libesp::ErrorType;
 using libesp::BaseMenu;
@@ -16,50 +18,147 @@ using libesp::Point2Ds;
 using libesp::TouchNotification;
 using libesp::RGBColor;
 
-static StaticQueue_t InternalQueue;
-static uint8_t InternalQueueBuffer[WiFiMenu::QUEUE_SIZE*WiFiMenu::MSG_SIZE] = {0};
+//static StaticQueue_t InternalQueue;
+//static uint8_t InternalQueueBuffer[WiFiMenu::QUEUE_SIZE*WiFiMenu::MSG_SIZE] = {0};
 const char *WiFiMenu::LOGTAG = "WIFIMENU";
 const char *WiFiMenu::MENUHEADER = "Connection Log";
 const char *WiFiMenu::WIFISID = "WIFISID";
 const char *WiFiMenu::WIFIPASSWD = "WIFIPASSWD";
 
+/*
 static const int8_t NUM_INTERFACE_ITEMS = 1;
 static libesp::AABBox2D Close(Point2Ds(185,7),6);
 static libesp::Button CloseButton((const char *)"X", MyApp::CLOSE_BTN_ID, &Close,RGBColor::RED, RGBColor::BLUE);
 static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&CloseButton};
-
+*/
 
 void time_sync_cb(struct timeval *tv) {
     ESP_LOGI(WiFiMenu::LOGTAG, "Notification of a time synchronization event");
 }
 
-/* An HTTP GET handler */
-static esp_err_t root_get_handler(httpd_req_t *req)
-{
-    httpd_resp_set_type(req, "text/html");
-    httpd_resp_send(req, "<h1>LEDSensor Clock Setup:</h1>", HTTPD_RESP_USE_STRLEN);
-    return ESP_OK;
-}
-
-static const httpd_uri_t root = {
-    .uri       = "/",
-    .method    = HTTP_GET,
-    .handler   = root_get_handler,
-    .user_ctx  = 0
-    //.is_websocket = 0,
-    //.handle_ws_control_frame =0,
-    //.supported_subprotocol = 0
+struct RequestContextInfo {
+  enum HandlerType {
+    ROOT
+    , SCAN
+    , SET_CON_DATA
+    , CALIBRATION
+    , RESET_CALIBRATION
+    , SYSTEM_INFO
+  };
+  HandlerType HType;
+  RequestContextInfo(const HandlerType &ht) : HType(ht) {}
+  esp_err_t go(httpd_req_t *r) {
+    switch(HType) {
+      case ROOT:
+        return MyApp::get().getWiFiMenu()->handleRoot(r);
+        break;
+      case SCAN:
+        return MyApp::get().getWiFiMenu()->handleScan(r);
+        break;
+        break;
+      case SET_CON_DATA:
+        return MyApp::get().getWiFiMenu()->handleSetConData(r);
+        break;
+      case CALIBRATION:
+        return MyApp::get().getWiFiMenu()->handleCalibration(r);
+        break;
+      case RESET_CALIBRATION:
+        return MyApp::get().getWiFiMenu()->handleResetCalibration(r);
+        break;
+      case SYSTEM_INFO:
+        return MyApp::get().getWiFiMenu()->handleSystemInfo(r);
+        break;
+      default:
+        return ESP_OK;
+        break;
+    }
+  }
 };
 
-WiFiMenu::WiFiMenu() : AppBaseMenu(), WiFiEventHandler(), InternalQueueHandler(), MyWiFi()
-  , NTPTime(), SSID(), Password(), Flags(0), ReTryCount(0), Items()
-  , MenuList(MENUHEADER, Items, 0, 0, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), 0, ItemCount)
-  , InternalState(INIT)
-	, MyLayout(&InterfaceElements[0],NUM_INTERFACE_ITEMS, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), false)
-  , WebServer() {
+static RequestContextInfo RootCtx(RequestContextInfo::HandlerType::ROOT);
+static RequestContextInfo ScanCtx(RequestContextInfo::HandlerType::SCAN);
+static RequestContextInfo SetConCtx(RequestContextInfo::HandlerType::SET_CON_DATA);
+static RequestContextInfo CalibrationCtx(RequestContextInfo::HandlerType::CALIBRATION);
+static RequestContextInfo ResetCalCtx(RequestContextInfo::HandlerType::RESET_CALIBRATION);
+static RequestContextInfo SystemInfoCtx(RequestContextInfo::HandlerType::SYSTEM_INFO);
 
-	InternalQueueHandler = xQueueCreateStatic(QUEUE_SIZE,MSG_SIZE,&InternalQueueBuffer[0],&InternalQueue);
-	MyLayout.reset();
+static esp_err_t http_handler(httpd_req_t *req) {
+  RequestContextInfo *rci = reinterpret_cast<RequestContextInfo *>(req->user_ctx);
+  return rci->go(req);
+}
+
+#define CHECK_FILE_EXTENSION(filename, ext) (strcasecmp(&filename[strlen(filename) - strlen(ext)], ext) == 0)
+
+void WiFiMenu::setContentTypeFromFile(httpd_req_t *req, const char *filepath) {
+  const char *type = "text/plain";
+  if (CHECK_FILE_EXTENSION(filepath, ".html")) {
+    type = "text/html";
+  } else if (CHECK_FILE_EXTENSION(filepath, ".js")) {
+    type = "application/javascript";
+  } else if (CHECK_FILE_EXTENSION(filepath, ".css")) {
+    type = "text/css";
+  } else if (CHECK_FILE_EXTENSION(filepath, ".png")) {
+    type = "image/png";
+  } else if (CHECK_FILE_EXTENSION(filepath, ".ico")) {
+    type = "image/x-icon";
+  } else if (CHECK_FILE_EXTENSION(filepath, ".svg")) {
+    type = "text/xml";
+  }
+  httpd_resp_set_type(req, type);
+}
+
+static const uint32_t FILE_PATH_MAX = 128;
+
+esp_err_t WiFiMenu::handleRoot(httpd_req_t *req) {
+  char filepath[FILE_PATH_MAX];
+  strlcpy(filepath, "www", sizeof(filepath));
+  if (req->uri[strlen(req->uri) - 1] == '/') {
+    strlcat(filepath, "/index.html", sizeof(filepath));
+  } else {
+    strlcat(filepath, req->uri, sizeof(filepath));
+  }
+  int fd = open(filepath, O_RDONLY, 0);
+  if (fd == -1) {
+    ESP_LOGE(LOGTAG, "Failed to open file : %s", filepath);
+    /* Respond with 500 Internal Server Error */
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to read existing file");
+    return ESP_FAIL;
+  }
+
+  setContentTypeFromFile(req, filepath);
+  char scratchBuffer[1024];
+
+  char *chunk = &scratchBuffer[0];
+  ssize_t read_bytes;
+  do {
+    /* Read file in chunks into the scratch buffer */
+    read_bytes = read(fd, chunk, sizeof(scratchBuffer));
+    if (read_bytes == -1) {
+      ESP_LOGE(LOGTAG, "Failed to read file : %s", filepath);
+    } else if (read_bytes > 0) {
+      /* Send the buffer contents as HTTP response chunk */
+      if (httpd_resp_send_chunk(req, chunk, read_bytes) != ESP_OK) {
+        close(fd);
+        ESP_LOGE(LOGTAG, "File sending failed!");
+        /* Abort sending file */
+        httpd_resp_sendstr_chunk(req, NULL);
+        /* Respond with 500 Internal Server Error */
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to send file");
+        return ESP_FAIL;
+      }
+    }
+  } while (read_bytes > 0);
+  /* Close file after sending complete */
+  close(fd);
+  ESP_LOGI(LOGTAG, "File sending complete");
+  /* Respond with an empty chunk to signal HTTP response completion */
+  httpd_resp_send_chunk(req, NULL, 0);
+  return ESP_OK;
+}
+
+WiFiMenu::WiFiMenu() : WiFiEventHandler(), MyWiFi()
+  , NTPTime(), SSID(), Password(), Flags(0), ReTryCount(0), WebServer() {
+
 }
 
 
@@ -118,35 +217,12 @@ bool WiFiMenu::isConnected() {
   return (Flags&CONNECTED)!=0;
 }
 
-
 WiFiMenu::~WiFiMenu() {
 
 }
 
-static etl::vector<libesp::WiFiAPRecord,16> ScanResults;
-
-ErrorType WiFiMenu::onInit() {
-	MyApp::get().getDisplay().fillScreen(RGBColor::BLACK);
-	TouchNotification *pe = nullptr;
-	for(int i=0;i<2;i++) {
-		if(xQueueReceive(InternalQueueHandler, &pe, 0)) {
-			delete pe;
-		}
-	}
-	MyApp::get().getTouch().addObserver(InternalQueueHandler);
-  clearListBuffer();
-  for(int i=0;i<ItemCount;++i) {
-		Items[i].text = getRow(i);
-		Items[i].id = i;
-		Items[i].setShouldScroll();
-	}
- 
-  ScanResults.clear();
-	return ErrorType();
-}
 
 ErrorType WiFiMenu::startAP() {
-  InternalState = CONFIG_CONNECTION;
   return MyWiFi.startAP("LEDClockSensor", ""); //start AP
 }
 
@@ -160,47 +236,67 @@ void WiFiMenu::handleAP() {
   }
 }
 
-libesp::BaseMenu::ReturnStateContext WiFiMenu::onRun() {
-	BaseMenu *nextState = this;
-
-
-  Point2Ds TouchPosInBuf;
-  libesp::Widget *widgetHit = nullptr;
-  TouchNotification *pe = nullptr;
-  if(xQueueReceive(InternalQueueHandler, &pe, 0)) {
-    Point2Ds screenPoint(pe->getX(),pe->getY());
-    TouchPosInBuf = MyApp::get().getCalibrationMenu()->getPickPoint(screenPoint);
-    ESP_LOGI(LOGTAG,"TouchPoint: X:%d Y:%d PD:%d", int32_t(TouchPosInBuf.getX()), int32_t(TouchPosInBuf.getY()), pe->isPenDown()?1:0);
-    bool penUp = !pe->isPenDown();
-    delete pe;
-    widgetHit = MyLayout.pick(TouchPosInBuf);
-    if(widgetHit && penUp) {
-      ESP_LOGI(LOGTAG, "Widget %s hit\n", widgetHit->getName());
-      switch(widgetHit->getWidgetID()) {
-        case MyApp::CLOSE_BTN_ID:
-          nextState = MyApp::get().getMenuState();
-          break;
-        default:
-          break;
-      } 
-    }
-  } 
-  MyLayout.draw(&MyApp::get().getDisplay());
-  switch(InternalState) {
-    case CONFIG_CONNECTION:
-      handleAP();
-      break;
-    case AWAITING_AP:
-      break;
-    default:
-      break;
+static etl::vector<libesp::WiFiAPRecord,16> ScanResults;
+esp_err_t WiFiMenu::handleScan(httpd_req_t *req) {
+  httpd_resp_set_type(req, "application/json");
+  cJSON *root = cJSON_CreateArray();
+  ErrorType et = MyWiFi.scan(ScanResults,false);
+  for(uint32_t i = 0;i<ScanResults.size();++i) {
+    cJSON *sr = cJSON_CreateObject();
+    cJSON_AddNumberToObject(sr, "id", i);
+    cJSON_AddStringToObject(sr, "ssid", ScanResults[i].getSSID().c_str());
+    cJSON_AddNumberToObject(sr, "rssi", ScanResults[i].getRSSI());
+    cJSON_AddNumberToObject(sr, "channel", ScanResults[i].getPrimary());
+    cJSON_AddStringToObject(sr, "authMode", ScanResults[i].getAuthModeString());
+    cJSON_AddItemToArray(root,sr);
   }
-	return BaseMenu::ReturnStateContext(nextState);
+  const char *info = cJSON_Print(root);
+  ESP_LOGI(LOGTAG, "%s", info);
+  httpd_resp_sendstr(req, info);
+  free((void *)info);
+  cJSON_Delete(root);
+  return et.getErrT();
 }
 
-ErrorType WiFiMenu::onShutdown() {
-	MyApp::get().getTouch().removeObserver(InternalQueueHandler);
-	return ErrorType();
+esp_err_t WiFiMenu::handleSetConData(httpd_req_t *req) {
+  esp_err_t et = ESP_OK;
+  return et;
+}
+
+esp_err_t WiFiMenu::handleCalibration(httpd_req_t *req) {
+  esp_err_t et = ESP_OK;
+  httpd_resp_set_type(req, "application/json");
+  cJSON *root = cJSON_CreateArray();
+  cJSON *sr = cJSON_CreateObject();
+  MyApp::get().getCalibrationMenu()->calibrationData(sr);
+  cJSON_AddItemToArray(root,sr);
+  const char *info = cJSON_Print(root);
+  ESP_LOGI(LOGTAG, "%s", info);
+  httpd_resp_sendstr(req, info);
+  free((void *)info);
+  cJSON_Delete(root);
+  return et;
+}
+
+esp_err_t WiFiMenu::handleResetCalibration(httpd_req_t *req) {
+  esp_err_t et = ESP_OK;
+  MyApp::get().getCalibrationMenu()->eraseCalibration();
+  libesp::System::get().restart();
+  return et;
+}
+
+esp_err_t WiFiMenu::handleSystemInfo(httpd_req_t *req) {
+  httpd_resp_set_type(req, "application/json");
+  cJSON *root = cJSON_CreateObject();
+  esp_chip_info_t chip_info;
+  esp_chip_info(&chip_info);
+  cJSON_AddStringToObject(root, "version", IDF_VER);
+  cJSON_AddNumberToObject(root, "cores", chip_info.cores);
+  const char *sys_info = cJSON_Print(root);
+  httpd_resp_sendstr(req, sys_info);
+  free((void *)sys_info);
+  cJSON_Delete(root);
+  return ESP_OK;
 }
 
 // wifi handler
@@ -247,6 +343,48 @@ ErrorType WiFiMenu::apStart() {
   Flags|=AP_START;
   ESP_LOGI(LOGTAG,"AP Started");
   et = WebServer.start();
+  //ok to make these local as data is copied
+  const httpd_uri_t scan = {
+    .uri       = "/scan",
+    .method    = HTTP_GET,
+    .handler   = http_handler,
+    .user_ctx  = &ScanCtx
+  };
+  et = WebServer.registerHandle(scan);
+  const httpd_uri_t conData = {
+    .uri       = "/setcon",
+    .method    = HTTP_POST,
+    .handler   = http_handler,
+    .user_ctx  = &SetConCtx
+  };
+  et = WebServer.registerHandle(conData);
+  const httpd_uri_t cal = {
+    .uri       = "/calibration",
+    .method    = HTTP_GET,
+    .handler   = http_handler,
+    .user_ctx  = &CalibrationCtx
+  };
+  et = WebServer.registerHandle(cal);
+  const httpd_uri_t resetcal = {
+    .uri       = "/resetcal",
+    .method    = HTTP_POST,
+    .handler   = http_handler,
+    .user_ctx  = &ResetCalCtx
+  };
+  et = WebServer.registerHandle(resetcal);
+  const httpd_uri_t SysInfo = {
+    .uri       = "/systeminfo",
+    .method    = HTTP_GET,
+    .handler   = http_handler,
+    .user_ctx  = &SystemInfoCtx
+  };
+  et = WebServer.registerHandle(SysInfo);
+  static const httpd_uri_t root = {
+    .uri       = "/",
+    .method    = HTTP_GET,
+    .handler   = http_handler,
+    .user_ctx  = &RootCtx
+  };
   et = WebServer.registerHandle(root);
   return et;
 }

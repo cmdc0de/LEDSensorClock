@@ -20,6 +20,19 @@ CalibrationMenu::CalibrationMenu(const char *NVSPartitionName) : AppBaseMenu(), 
 	InternalQueueHandler = xQueueCreateStatic(QUEUE_SIZE,MSG_SIZE,&InternalQueueBuffer[0],&InternalQueue);
 }
 
+void CalibrationMenu::calibrationData(cJSON *sr) {
+  cJSON_AddNumberToObject(sr, "top_left_x",     CalibrationLocations[TOP_LEFT].getX());
+  cJSON_AddNumberToObject(sr, "top_left_y",     CalibrationLocations[TOP_LEFT].getY());
+  cJSON_AddNumberToObject(sr, "top_right_x",    CalibrationLocations[TOP_RIGHT].getX());
+  cJSON_AddNumberToObject(sr, "top_right_y",    CalibrationLocations[TOP_RIGHT].getY());
+  cJSON_AddNumberToObject(sr, "bottom_left_x",  CalibrationLocations[BOTTOM_LEFT].getX());
+  cJSON_AddNumberToObject(sr, "bottom_left_y",  CalibrationLocations[BOTTOM_LEFT].getY());
+  cJSON_AddNumberToObject(sr, "bottom_right_x", CalibrationLocations[BOTTOM_RIGHT].getX());
+  cJSON_AddNumberToObject(sr, "bottom_right_y", CalibrationLocations[BOTTOM_RIGHT].getY());
+  cJSON_AddNumberToObject(sr, "mid_x",          CalibrationLocations[MID].getX());
+  cJSON_AddNumberToObject(sr, "mid_y",          CalibrationLocations[MID].getY());
+}
+
 ErrorType CalibrationMenu::loadCalibrationData() {
 	size_t size = sizeof(CalibrationLocations);
 	ErrorType et = CalibrationData.getBlob("caldata",&CalibrationLocations[0],size);
@@ -42,6 +55,10 @@ bool CalibrationMenu::hasBeenCalibrated() {
 	size_t size = sizeof(CalibrationLocations);
 	bool retVal =  CalibrationData.getBlob("caldata",&CalibrationLocations[0],size)==ESP_OK;
   return retVal;
+}
+
+void CalibrationMenu::eraseCalibration() {
+  CalibrationData.eraseKey("caldata");
 }
 
 void CalibrationMenu::calculate() {

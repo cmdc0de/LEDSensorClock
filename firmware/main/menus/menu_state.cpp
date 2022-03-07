@@ -4,6 +4,8 @@
 #include "calibration_menu.h"
 #include <app/display_message_state.h>
 #include <esp_log.h>
+#include <math/rectbbox.h>
+#include "setting_menu.h"
 
 using libesp::ErrorType;
 using libesp::BaseMenu;
@@ -20,11 +22,15 @@ static libesp::AABBox2D TempBV(Point2Ds(30,40), 25);
 static libesp::Label TempLabel(uint16_t(0), (const char *)"Temperature", &TempBV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
 static libesp::AABBox2D HumBV(Point2Ds(100,40), 25);
 static libesp::Label HumLabel (uint16_t(0), (const char *)"Humidity", &HumBV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
-static const int8_t NUM_INTERFACE_ITEMS = 2;
-static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&TempLabel, &HumLabel};
+
+static libesp::RectBBox2D SettingRect(Point2Ds(110,85), 30, 15);
+static libesp::Button SettingBtn((const char *)"Settings", uint16_t(2), &SettingRect, RGBColor::BLUE, RGBColor::WHITE);
+
+static const int8_t NUM_INTERFACE_ITEMS = 3;
+static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&TempLabel, &HumLabel, &SettingBtn};
 
 MenuState::MenuState() :
-	AppBaseMenu(), //MenuList("Main Menu", Items, 0, 0, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), 0, ItemCount),
+	AppBaseMenu(),
 	MyLayout(&InterfaceElements[0],NUM_INTERFACE_ITEMS, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), false){
 	InternalQueueHandler = xQueueCreateStatic(QUEUE_SIZE,MSG_SIZE,&InternalQueueBuffer[0],&InternalQueue);
 	MyLayout.reset();
@@ -80,8 +86,8 @@ libesp::BaseMenu::ReturnStateContext MenuState::onRun() {
 	if(widgetHit) {
 		ESP_LOGI(LOGTAG, "Widget %s hit\n", widgetHit->getName());
 		switch(widgetHit->getWidgetID()) {
-		case 0:
-			//nextState = MyApp::get().getTimerMenu();
+		case 2:
+			nextState = MyApp::get().getSettingMenu();
 			break;
 		}
 	}
