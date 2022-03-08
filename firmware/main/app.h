@@ -99,6 +99,7 @@ public:
   uint32_t getLightSensorRaw() { return LSensorResult.RawAvg;}
   uint32_t getLightCalcVoltage() { return LSensorResult.CalculatedVoltage;}
   libesp::Button &getCloseButton();
+  libesp::ErrorType initFS();
 protected:
 	MyApp();
   void handleMessages();

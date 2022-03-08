@@ -38,7 +38,8 @@ static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&StartAPBtn, &C
 
 SettingMenu::SettingMenu() 
 	: AppBaseMenu(), TouchQueueHandle() 
-	, MyLayout(&InterfaceElements[0],NUM_INTERFACE_ITEMS, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), false) {
+	, MyLayout(&InterfaceElements[0],NUM_INTERFACE_ITEMS, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), false)
+  , InternalState(INTERNAL_STATE::SHOW_ALL) {
 
 	MyLayout.reset();
 	TouchQueueHandle = xQueueCreateStatic(TOUCH_QUEUE_SIZE,TOUCH_MSG_SIZE,&TouchQueueBuffer[0],&TouchQueue);
@@ -80,8 +81,7 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
 		  switch(widgetHit->getWidgetID()) {
 		  case 0:
         MyApp::get().getWiFiMenu()->startAP();
-	      //nextState = MyApp::get().getWiFiMenu();
-	      nextState = MyApp::get().getDisplayMessageState(this, "startin AP", 5000);
+        InternalState = AP_RUNNING;
 			  break;
       case 1:
         nextState = MyApp::get().getCalibrationMenu();
@@ -89,6 +89,10 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
 		  }
 	  }
 	}
+
+  if(InternalState==AP_RUNNING) {
+    MyApp::get().getDisplay().drawString(10,60, "AP Running");
+  }
 
   MyLayout.draw(&MyApp::get().getDisplay());
 

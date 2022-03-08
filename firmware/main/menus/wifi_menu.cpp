@@ -96,14 +96,16 @@ void WiFiMenu::setContentTypeFromFile(httpd_req_t *req, const char *filepath) {
   } else if (CHECK_FILE_EXTENSION(filepath, ".svg")) {
     type = "text/xml";
   }
+  ESP_LOGI(LOGTAG, "Contet Type set to %s", type);
   httpd_resp_set_type(req, type);
 }
 
 static const uint32_t FILE_PATH_MAX = 128;
 
 esp_err_t WiFiMenu::handleRoot(httpd_req_t *req) {
+  ESP_LOGI(LOGTAG, "HANDLE ROOT");
   char filepath[FILE_PATH_MAX];
-  strlcpy(filepath, "www", sizeof(filepath));
+  strlcpy(filepath, "/www", sizeof(filepath));
   if (req->uri[strlen(req->uri) - 1] == '/') {
     strlcat(filepath, "/index.html", sizeof(filepath));
   } else {
@@ -115,6 +117,8 @@ esp_err_t WiFiMenu::handleRoot(httpd_req_t *req) {
     /* Respond with 500 Internal Server Error */
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to read existing file");
     return ESP_FAIL;
+  } else {
+    ESP_LOGI(LOGTAG, "File opened %s", filepath);
   }
 
   setContentTypeFromFile(req, filepath);
@@ -416,6 +420,13 @@ ErrorType WiFiMenu::apStart() {
     .user_ctx  = &RootCtx
   };
   et = WebServer.registerHandle(root);
+  static const httpd_uri_t st = {
+    .uri       = "/static/*",
+    .method    = HTTP_GET,
+    .handler   = http_handler,
+    .user_ctx  = &RootCtx
+  };
+  et = WebServer.registerHandle(st);
   return et;
 }
 
