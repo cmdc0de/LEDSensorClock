@@ -8,7 +8,11 @@ const initialState = {
 }
 
 export const fetchCalibrationData = createAsyncThunk('calibrationData/fetchCalibrationData', async () => {
-  const response = await client.get('https://my-json-server.typicode.com/cmdc0de/LEDSensorClock/calibrationdata')
+  var uri = '/calibration';
+  if (process.env.NODE_ENV !== 'production') {
+    uri = 'https://my-json-server.typicode.com/cmdc0de/LEDSensorClock/calibrationdata';
+  }
+  const response = await client.get(uri);
   return response.data
 })
 

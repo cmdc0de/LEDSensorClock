@@ -10,6 +10,7 @@
 #include <math/rectbbox.h>
 #include <cJSON.h>
 #include <system.h>
+#include <net/utilities.h>
 
 using libesp::ErrorType;
 using libesp::BaseMenu;
@@ -159,13 +160,18 @@ WiFiMenu::WiFiMenu() : WiFiEventHandler(), MyWiFi()
 
 
 ErrorType WiFiMenu::hasWiFiBeenSetup() {
-  char data[64] = {'\0'};
+  char data[128] = {'\0'};
   uint32_t len = sizeof(data);
   ErrorType et = MyApp::get().getNVS().getValue(WIFISID, &data[0],len);
   if(et.ok()) {
     SSID = data;
     et = MyApp::get().getNVS().getValue(WIFIPASSWD, &data[0],len);
-    Password = &data[0];
+    if(et.ok()) {
+      Password = &data[0];
+      ESP_LOGI(LOGTAG, "ssid %s: pass: %s", SSID.c_str(), Password.c_str());
+    } else {
+      ESP_LOGI(LOGTAG, "error getting password: %d %s", et.getErrT(), et.toString());
+    }
   } else {
     ESP_LOGI(LOGTAG,"failed to load wifisid: %d %s", et.getErrT(), et.toString()); 
   }
@@ -234,13 +240,8 @@ bool WiFiMenu::stopAP() {
   return MyWiFi.stopWiFi();
 }
 
-void WiFiMenu::handleAP() {
-  if(isFlagSet(AP_START)) {
-    //if web server started ()
-  }
-}
-
 esp_err_t WiFiMenu::handleScan(httpd_req_t *req) {
+  ESP_LOGI(LOGTAG,"handleScan");
   httpd_resp_set_type(req, "application/json");
   cJSON *root = cJSON_CreateArray();
   ErrorType et = MyWiFi.scan(ScanResults,false);
@@ -262,8 +263,9 @@ esp_err_t WiFiMenu::handleScan(httpd_req_t *req) {
 }
 
 esp_err_t WiFiMenu::handleSetConData(httpd_req_t *req) {
+  ESP_LOGI(LOGTAG,"handleSetConData");
   ErrorType et = ESP_OK;
-  char buf[256];
+  char buf[128];
 
   int total_len = req->content_len;
   int cur_len = 0;
@@ -284,15 +286,25 @@ esp_err_t WiFiMenu::handleSetConData(httpd_req_t *req) {
   }
   buf[total_len] = '\0';
 
-  cJSON *root = cJSON_Parse(buf);
-  int id = cJSON_GetObjectItem(root, "id")->valueint;
-  const char *passwd = cJSON_GetObjectItem(root, "password")->string;
-  if(id>0 && id<ScanResults.size()) {
-    et = setWiFiConnectionData(ScanResults[id].getSSID().c_str(), passwd);
+  ESP_LOGI(LOGTAG,"before decode: %s", &buf[0]);
+  char decodeBuf[128];
+  urlDecode(&buf[0], &decodeBuf[0], sizeof(decodeBuf));
+  ESP_LOGI(LOGTAG,"after decode: %s", &decodeBuf[0]);
+  char idVal[8] = {'\0'};
+  int id = -1;
+  char pass[64] = {'\0'};
+  if(ESP_OK==httpd_query_key_value(&decodeBuf[0],"id", &idVal[0], sizeof(idVal) )) {
+    id = atoi(&idVal[0]);
+    if(ESP_OK==httpd_query_key_value(&decodeBuf[0],"password", &pass[0], sizeof(pass) )) {
+      et = setWiFiConnectionData(ScanResults[id].getSSID().c_str(), pass);
+    } else {
+      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "invalid ID");
+    }
   } else {
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "invalid ID");
   }
-  cJSON_Delete(root);
+
+  //TODO
   httpd_resp_sendstr(req, "Post control value successfully");
   return et.getErrT();
 }
@@ -315,6 +327,10 @@ esp_err_t WiFiMenu::handleCalibration(httpd_req_t *req) {
 esp_err_t WiFiMenu::handleResetCalibration(httpd_req_t *req) {
   esp_err_t et = ESP_OK;
   MyApp::get().getCalibrationMenu()->eraseCalibration();
+  httpd_resp_set_type(req, "text/html");
+  const char *info = "<html><body><div><h2>ESP 32 is rebooting and will enter touch calibration mode</h2></div></body></html>";
+  httpd_resp_sendstr(req, info);
+	vTaskDelay(1000 / portTICK_RATE_MS);
   libesp::System::get().restart();
   return et;
 }
@@ -372,61 +388,90 @@ ErrorType WiFiMenu::apStaDisconnected(wifi_event_ap_stadisconnected_t *info) {
   return ErrorType(ErrorType::MAX_RETRIES);
 }
 
+const httpd_uri_t scan = {
+  .uri       = "/wifiscan",
+  .method    = HTTP_GET,
+  .handler   = http_handler,
+  .user_ctx  = &ScanCtx
+};
+const httpd_uri_t conData = {
+  .uri       = "/setcon",
+  .method    = HTTP_POST,
+  .handler   = http_handler,
+  .user_ctx  = &SetConCtx
+};
+const httpd_uri_t cal = {
+  .uri       = "/calibration",
+  .method    = HTTP_GET,
+  .handler   = http_handler,
+  .user_ctx  = &CalibrationCtx
+};
+const httpd_uri_t resetcal = {
+  .uri       = "/resetcal",
+  .method    = HTTP_POST,
+  .handler   = http_handler,
+  .user_ctx  = &ResetCalCtx
+};
+const httpd_uri_t SysInfo = {
+  .uri       = "/systeminfo",
+  .method    = HTTP_GET,
+  .handler   = http_handler,
+  .user_ctx  = &SystemInfoCtx
+};
+static const httpd_uri_t root = {
+  .uri       = "/",
+  .method    = HTTP_GET,
+  .handler   = http_handler,
+  .user_ctx  = &RootCtx
+};
+static const httpd_uri_t st = {
+  .uri       = "/static/*",
+  .method    = HTTP_GET,
+  .handler   = http_handler,
+  .user_ctx  = &RootCtx
+};
+
+
 ErrorType WiFiMenu::apStart() {
   ErrorType et;
   Flags|=AP_START;
   ESP_LOGI(LOGTAG,"AP Started");
   et = WebServer.start();
-  //ok to make these local as data is copied
-  const httpd_uri_t scan = {
-    .uri       = "/scan",
-    .method    = HTTP_GET,
-    .handler   = http_handler,
-    .user_ctx  = &ScanCtx
-  };
-  et = WebServer.registerHandle(scan);
-  const httpd_uri_t conData = {
-    .uri       = "/setcon",
-    .method    = HTTP_POST,
-    .handler   = http_handler,
-    .user_ctx  = &SetConCtx
-  };
-  et = WebServer.registerHandle(conData);
-  const httpd_uri_t cal = {
-    .uri       = "/calibration",
-    .method    = HTTP_GET,
-    .handler   = http_handler,
-    .user_ctx  = &CalibrationCtx
-  };
-  et = WebServer.registerHandle(cal);
-  const httpd_uri_t resetcal = {
-    .uri       = "/resetcal",
-    .method    = HTTP_POST,
-    .handler   = http_handler,
-    .user_ctx  = &ResetCalCtx
-  };
-  et = WebServer.registerHandle(resetcal);
-  const httpd_uri_t SysInfo = {
-    .uri       = "/systeminfo",
-    .method    = HTTP_GET,
-    .handler   = http_handler,
-    .user_ctx  = &SystemInfoCtx
-  };
-  et = WebServer.registerHandle(SysInfo);
-  static const httpd_uri_t root = {
-    .uri       = "/",
-    .method    = HTTP_GET,
-    .handler   = http_handler,
-    .user_ctx  = &RootCtx
-  };
-  et = WebServer.registerHandle(root);
-  static const httpd_uri_t st = {
-    .uri       = "/static/*",
-    .method    = HTTP_GET,
-    .handler   = http_handler,
-    .user_ctx  = &RootCtx
-  };
-  et = WebServer.registerHandle(st);
+  if(et.ok()) {
+    et = WebServer.registerHandle(scan);
+    if(et.ok()) {
+      et = WebServer.registerHandle(conData);
+      if(et.ok()) {
+        et = WebServer.registerHandle(cal);
+        if(et.ok()){
+          et = WebServer.registerHandle(resetcal);
+          if(et.ok()) {
+            et = WebServer.registerHandle(SysInfo);
+            if(et.ok()) {
+              et = WebServer.registerHandle(root);
+              if(et.ok()) {
+                et = WebServer.registerHandle(st);
+              } else {
+                ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+              }
+            } else {
+              ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+            }
+          } else {
+            ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+          } 
+        } else {
+          ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+        } 
+      } else {
+        ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+      }
+    } else {
+      ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+    }
+  } else {
+    ESP_LOGI(LOGTAG,"Error starting web server: %d: %s", et.getErrT(), et.toString());
+  }
   return et;
 }
 

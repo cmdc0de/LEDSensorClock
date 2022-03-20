@@ -19,6 +19,7 @@ public:
   enum INTERNAL_STATE {
     SHOW_ALL = 0
     , AP_RUNNING
+    , CALIBRATION
   };
 public:
 	SettingMenu();

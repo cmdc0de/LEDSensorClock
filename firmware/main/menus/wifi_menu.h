@@ -66,7 +66,6 @@ public:
 	virtual libesp::ErrorType staScanDone(system_event_sta_scan_done_t *info);
 	virtual libesp::ErrorType staAuthChange(system_event_sta_authmode_change_t *info);
 protected:
-  void handleAP();
   bool isFlagSet(uint32_t f) {return ((f&Flags)!=0);}
   void setContentTypeFromFile(httpd_req_t *req, const char *filepath);
   libesp::ErrorType setWiFiConnectionData(const char *ssid, const char *pass);

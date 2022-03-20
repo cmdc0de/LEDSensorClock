@@ -28,8 +28,10 @@ static StaticQueue_t TouchQueue;
 static uint8_t TouchQueueBuffer[SettingMenu::TOUCH_QUEUE_SIZE*SettingMenu::TOUCH_MSG_SIZE] = {0};
 const char *SettingMenu::LOGTAG = "SettingMenu";
 
+static const char *START_AP = "Start AP";
+static const char *STOP_AP = "Stop AP";
 static libesp::RectBBox2D StartAP(Point2Ds(45,25), 40, 15);
-static libesp::Button StartAPBtn((const char *)"Start AP", uint16_t(0), &StartAP, RGBColor::BLUE, RGBColor::WHITE);
+static libesp::Button StartAPBtn(START_AP, uint16_t(0), &StartAP, RGBColor::BLUE, RGBColor::WHITE);
 static libesp::RectBBox2D CalBV(Point2Ds(145,25), 40, 15);
 static libesp::Button CalBtn((const char *)"Re-Calibrate", uint16_t(1), &CalBV, RGBColor::BLUE, RGBColor::WHITE);
 
@@ -76,14 +78,23 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
 		penUp = !pe->isPenDown();
 		delete pe;
 		widgetHit = MyLayout.pick(TouchPosInBuf);
-	  if(widgetHit) {
+	  if(widgetHit && penUp) {
 		  ESP_LOGI(LOGTAG, "Widget %s hit\n", widgetHit->getName());
+	    MyApp::get().getDisplay().fillScreen(RGBColor::BLACK);
 		  switch(widgetHit->getWidgetID()) {
-		  case 0:
-        MyApp::get().getWiFiMenu()->startAP();
-        InternalState = AP_RUNNING;
+    	case 0:
+        if(InternalState!=AP_RUNNING) {
+          StartAPBtn.setName(STOP_AP);
+          MyApp::get().getWiFiMenu()->startAP();
+          InternalState = AP_RUNNING;
+        } else {
+          StartAPBtn.setName(START_AP);
+          MyApp::get().getWiFiMenu()->stopAP();
+          InternalState = SHOW_ALL;
+        }
 			  break;
       case 1:
+        MyApp::get().getWiFiMenu()->stopAP();
         nextState = MyApp::get().getCalibrationMenu();
         break;
 		  }

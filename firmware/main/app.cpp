@@ -292,7 +292,7 @@ libesp::ErrorType MyApp::onInit() {
 
   et = MyWiFiMenu.initWiFi();
   if(et.ok()) {
-    ESP_LOGI(LOGTAG,"OnInit:After Send: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
+    ESP_LOGI(LOGTAG,"OnInit:After MyWiFiMenu::initWiFi: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
   } else {
     ESP_LOGE(LOGTAG,"Error Num :%d Msg: %s", et.getErrT(), et.toString());
   }
@@ -300,6 +300,7 @@ libesp::ErrorType MyApp::onInit() {
   if(!MyCalibrationMenu.hasBeenCalibrated()) {
 		setCurrentMenu(getCalibrationMenu());
 	} else {
+    ESP_LOGI(LOGTAG,"***********************************************************");
     if(MyWiFiMenu.hasWiFiBeenSetup().ok()) {
       et = MyWiFiMenu.connect();
   		setCurrentMenu(getMenuState());

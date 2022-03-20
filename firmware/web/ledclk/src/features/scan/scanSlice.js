@@ -8,7 +8,11 @@ const initialState = {
 }
 
 export const fetchAps = createAsyncThunk('scanResults/fetchAps', async () => {
-  const response = await client.get('https://my-json-server.typicode.com/cmdc0de/LEDSensorClock/scanresults')
+  var uri = '/wifiscan';
+  if (process.env.NODE_ENV !== 'production') {
+    uri = 'https://my-json-server.typicode.com/cmdc0de/LEDSensorClock/scanresults';
+  }
+  const response = await client.get(uri);
   return response.data
 })
 

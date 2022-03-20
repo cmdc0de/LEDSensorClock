@@ -41,7 +41,7 @@ const Calibration = () => {
 
   return (
   <div>
-  <form action="/resetCalibration" method="post">
+  <form action="/resetcal" method="post">
     <table className="tg">
       <thead>
         <tr>
