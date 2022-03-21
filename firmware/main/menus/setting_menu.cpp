@@ -85,6 +85,7 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
     	case 0:
         if(InternalState!=AP_RUNNING) {
           StartAPBtn.setName(STOP_AP);
+          MyApp::get().getWiFiMenu()->clearConnectData();
           MyApp::get().getWiFiMenu()->startAP();
           InternalState = AP_RUNNING;
         } else {
@@ -102,7 +103,11 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
 	}
 
   if(InternalState==AP_RUNNING) {
-    MyApp::get().getDisplay().drawString(10,60, "AP Running");
+    char strBuf[128];
+    snprintf(&strBuf[0], sizeof(strBuf), "AP Running: SSID = %s", WiFiMenu::WIFIAPSSID);
+    MyApp::get().getDisplay().drawString(10, 90, &strBuf[0]);
+  } else {
+    MyApp::get().getDisplay().drawString(10, 90, "AP Stopped");
   }
 
   MyLayout.draw(&MyApp::get().getDisplay());

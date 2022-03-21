@@ -12,6 +12,7 @@ class WiFiMenu: public libesp::WiFiEventHandler {
 public:
 	static const int QUEUE_SIZE = 10;
 	static const int MSG_SIZE = sizeof(libesp::TouchNotification*);
+  static const char *WIFIAPSSID;
   typedef libesp::WiFi::SSIDTYPE SSIDTYPE;
   typedef libesp::WiFi::PASSWDTYPE PASSWDTYPE;
   static const char *LOGTAG;
@@ -62,7 +63,7 @@ public:
 	virtual libesp::ErrorType apStop();
 	virtual libesp::ErrorType staConnected(system_event_sta_connected_t *info);
 	virtual libesp::ErrorType staDisconnected(system_event_sta_disconnected_t *info);
-	virtual libesp::ErrorType staGotIp(system_event_sta_got_ip_t info);
+	virtual libesp::ErrorType staGotIp(system_event_sta_got_ip_t *info);
 	virtual libesp::ErrorType staScanDone(system_event_sta_scan_done_t *info);
 	virtual libesp::ErrorType staAuthChange(system_event_sta_authmode_change_t *info);
 protected:

@@ -18,9 +18,9 @@ static StaticQueue_t InternalQueue;
 static uint8_t InternalQueueBuffer[MenuState::QUEUE_SIZE*MenuState::MSG_SIZE] = {0};
 static const char *LOGTAG = "MenuState";
 
-static libesp::AABBox2D TempBV(Point2Ds(30,40), 25);
-static libesp::Label TempLabel(uint16_t(0), (const char *)"Temperature", &TempBV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
-static libesp::AABBox2D HumBV(Point2Ds(100,40), 25);
+static libesp::RectBBox2D TempBV(Point2Ds(30,40), 25, 15);
+static libesp::Label TempLabel(uint16_t(0), (const char *)"Temp", &TempBV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
+static libesp::RectBBox2D HumBV(Point2Ds(100,40), 25, 15);
 static libesp::Label HumLabel (uint16_t(0), (const char *)"Humidity", &HumBV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
 
 static libesp::RectBBox2D SettingRect(Point2Ds(110,85), 30, 15);

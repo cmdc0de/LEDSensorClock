@@ -19,10 +19,11 @@ using libesp::Point2Ds;
 using libesp::TouchNotification;
 using libesp::RGBColor;
 
+const char *WiFiMenu::WIFIAPSSID = "LEDClockSensor";
 const char *WiFiMenu::LOGTAG = "WIFIMENU";
 const char *WiFiMenu::MENUHEADER = "Connection Log";
-const char *WiFiMenu::WIFISID = "WIFISID";
-const char *WiFiMenu::WIFIPASSWD = "WIFIPASSWD";
+const char *WiFiMenu::WIFISID    = "WIFISID";
+const char *WiFiMenu::WIFIPASSWD = "WPASSWD";
 static etl::vector<libesp::WiFiAPRecord,16> ScanResults;
 
 void time_sync_cb(struct timeval *tv) {
@@ -160,25 +161,29 @@ WiFiMenu::WiFiMenu() : WiFiEventHandler(), MyWiFi()
 
 
 ErrorType WiFiMenu::hasWiFiBeenSetup() {
+  ESP_LOGI(LOGTAG,"hasWiFiBeenSetup");
   char data[128] = {'\0'};
   uint32_t len = sizeof(data);
-  ErrorType et = MyApp::get().getNVS().getValue(WIFISID, &data[0],len);
+  ErrorType et = MyApp::get().getNVS().getValue(WIFISID, &data[0], len);
   if(et.ok()) {
     SSID = data;
-    et = MyApp::get().getNVS().getValue(WIFIPASSWD, &data[0],len);
+    len = sizeof(data);
+    et = MyApp::get().getNVS().getValue(WIFIPASSWD, &data[0], len);
     if(et.ok()) {
       Password = &data[0];
       ESP_LOGI(LOGTAG, "ssid %s: pass: %s", SSID.c_str(), Password.c_str());
     } else {
-      ESP_LOGI(LOGTAG, "error getting password: %d %s", et.getErrT(), et.toString());
+      ESP_LOGI(LOGTAG, "error getting password: %u %d %s", len, et.getErrT(), et.toString());
     }
   } else {
-    ESP_LOGI(LOGTAG,"failed to load wifisid: %d %s", et.getErrT(), et.toString()); 
+    ESP_LOGI(LOGTAG,"failed to load wifisid: %u %d %s", len, et.getErrT(), et.toString()); 
   }
   return et;
 }
 
 ErrorType WiFiMenu::setWiFiConnectionData(const char *ssid, const char *pass) {
+  ESP_LOGI(LOGTAG,"con data %s %s", ssid,pass);
+  libesp::NVSStackCommit nvssc(&MyApp::get().getNVS());
   ErrorType et = MyApp::get().getNVS().setValue(WIFISID, ssid);
   if(et.ok()) {
     et = MyApp::get().getNVS().setValue(WIFIPASSWD,pass);
@@ -187,6 +192,7 @@ ErrorType WiFiMenu::setWiFiConnectionData(const char *ssid, const char *pass) {
 }
 
 ErrorType WiFiMenu::clearConnectData() {
+  libesp::NVSStackCommit nvssc(&MyApp::get().getNVS());
   ErrorType et = MyApp::get().getNVS().eraseKey(WIFISID);
   if(!et.ok()) {
     ESP_LOGI(LOGTAG,"failed to erase key ssid: %d %s", et.getErrT(), et.toString()); 
@@ -194,6 +200,9 @@ ErrorType WiFiMenu::clearConnectData() {
   et = MyApp::get().getNVS().eraseKey(WIFIPASSWD);
   if(!et.ok()) {
     ESP_LOGI(LOGTAG,"failed to erase key password: %d %s", et.getErrT(), et.toString()); 
+  }
+  if(et.ok()) {
+    ESP_LOGI(LOGTAG, "connection data cleared from NVS storage!");
   }
   return et;
 }
@@ -233,7 +242,7 @@ WiFiMenu::~WiFiMenu() {
 
 
 ErrorType WiFiMenu::startAP() {
-  return MyWiFi.startAP("LEDClockSensor", ""); //start AP
+  return MyWiFi.startAP(WIFIAPSSID, ""); //start AP
 }
 
 bool WiFiMenu::stopAP() {
@@ -296,7 +305,7 @@ esp_err_t WiFiMenu::handleSetConData(httpd_req_t *req) {
   if(ESP_OK==httpd_query_key_value(&decodeBuf[0],"id", &idVal[0], sizeof(idVal) )) {
     id = atoi(&idVal[0]);
     if(ESP_OK==httpd_query_key_value(&decodeBuf[0],"password", &pass[0], sizeof(pass) )) {
-      et = setWiFiConnectionData(ScanResults[id].getSSID().c_str(), pass);
+      et = setWiFiConnectionData(ScanResults[id].getSSID().c_str(), &pass[0]);
     } else {
       httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "invalid ID");
     }
@@ -502,7 +511,7 @@ ErrorType WiFiMenu::staDisconnected(system_event_sta_disconnected_t *info) {
   return ErrorType(ErrorType::MAX_RETRIES);
 }
 
-ErrorType WiFiMenu::staGotIp(system_event_sta_got_ip_t info) {
+ErrorType WiFiMenu::staGotIp(system_event_sta_got_ip_t *info) {
   ErrorType et;
   ESP_LOGI(LOGTAG,"Have IP");
   Flags|=HAS_IP;
