@@ -19,6 +19,8 @@ public:
   static const char *MENUHEADER;
   static const char *WIFISID;
   static const char *WIFIPASSWD;
+  static const char *TZKEY;
+  static const char *CLKNAME;
   static const uint32_t MAX_RETRY_CONNECT_COUNT = 10;
 
   static const uint32_t NOSTATE = 0;
@@ -53,6 +55,8 @@ public:
   esp_err_t handleCalibration(httpd_req_t *req);
   esp_err_t handleResetCalibration(httpd_req_t *req);
   esp_err_t handleSystemInfo(httpd_req_t *req);
+  esp_err_t handleGetTZ(httpd_req_t *req);
+  esp_err_t handleSetTZ(httpd_req_t *req);
 public:
   virtual libesp::ErrorType staStart();
   virtual libesp::ErrorType staStop();
@@ -78,6 +82,7 @@ private:
   uint32_t    Flags;
   uint16_t    ReTryCount;
   libesp::HTTPWebServer WebServer;
+  char        TimeZone[8];
 };
 
 #endif

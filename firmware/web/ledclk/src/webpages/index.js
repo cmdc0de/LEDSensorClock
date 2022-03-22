@@ -9,6 +9,7 @@ import Home from './home';
 import WiFiScan from './scan';
 import ScanDetails from './scandetails'
 import Calibration from './calibration'
+import SysInfo from './systeminfo'
 
 const Webpages = () => {
     return(
@@ -18,6 +19,7 @@ const Webpages = () => {
             <Route path="/scan" element={<WiFiScan />}> </Route>
             <Route exact path="/scan/:apid" element={<ScanDetails />}></Route>
             <Route exact path="/calibration" element={<Calibration />}></Route>
+            <Route exact path="/sinfo" element={<SysInfo />}></Route>
         </Routes>
       </Router>
     );

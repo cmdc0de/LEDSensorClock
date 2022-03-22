@@ -18,12 +18,15 @@ using libesp::XPT2046;
 using libesp::Point2Ds;
 using libesp::TouchNotification;
 using libesp::RGBColor;
+using libesp::System;
 
 const char *WiFiMenu::WIFIAPSSID = "LEDClockSensor";
 const char *WiFiMenu::LOGTAG = "WIFIMENU";
 const char *WiFiMenu::MENUHEADER = "Connection Log";
 const char *WiFiMenu::WIFISID    = "WIFISID";
 const char *WiFiMenu::WIFIPASSWD = "WPASSWD";
+const char *WiFiMenu::TZKEY      = "TZKEY";
+const char *WiFiMenu::CLKNAME    = "My Sensor Clock";
 static etl::vector<libesp::WiFiAPRecord,16> ScanResults;
 
 void time_sync_cb(struct timeval *tv) {
@@ -38,6 +41,8 @@ struct RequestContextInfo {
     , CALIBRATION
     , RESET_CALIBRATION
     , SYSTEM_INFO
+    , GET_TZ
+    , SET_TZ
   };
   HandlerType HType;
   RequestContextInfo(const HandlerType &ht) : HType(ht) {}
@@ -62,6 +67,12 @@ struct RequestContextInfo {
       case SYSTEM_INFO:
         return MyApp::get().getWiFiMenu()->handleSystemInfo(r);
         break;
+      case GET_TZ:
+        return MyApp::get().getWiFiMenu()->handleGetTZ(r);
+        break;
+      case SET_TZ:
+        return MyApp::get().getWiFiMenu()->handleSetTZ(r);
+        break;
       default:
         return ESP_OK;
         break;
@@ -75,6 +86,8 @@ static RequestContextInfo SetConCtx(RequestContextInfo::HandlerType::SET_CON_DAT
 static RequestContextInfo CalibrationCtx(RequestContextInfo::HandlerType::CALIBRATION);
 static RequestContextInfo ResetCalCtx(RequestContextInfo::HandlerType::RESET_CALIBRATION);
 static RequestContextInfo SystemInfoCtx(RequestContextInfo::HandlerType::SYSTEM_INFO);
+static RequestContextInfo GetTZCtx(RequestContextInfo::HandlerType::GET_TZ);
+static RequestContextInfo SetTZCtx(RequestContextInfo::HandlerType::SET_TZ);
 
 static esp_err_t http_handler(httpd_req_t *req) {
   RequestContextInfo *rci = reinterpret_cast<RequestContextInfo *>(req->user_ctx);
@@ -155,8 +168,8 @@ esp_err_t WiFiMenu::handleRoot(httpd_req_t *req) {
 }
 
 WiFiMenu::WiFiMenu() : WiFiEventHandler(), MyWiFi()
-  , NTPTime(), SSID(), Password(), Flags(0), ReTryCount(0), WebServer() {
-
+  , NTPTime(), SSID(), Password(), Flags(0), ReTryCount(0), WebServer(), TimeZone() {
+  memset(&TimeZone[0],0,sizeof(TimeZone));
 }
 
 
@@ -344,13 +357,89 @@ esp_err_t WiFiMenu::handleResetCalibration(httpd_req_t *req) {
   return et;
 }
 
+esp_err_t WiFiMenu::handleGetTZ(httpd_req_t *req) {
+  httpd_resp_set_type(req, "application/json");
+  uint32_t len = sizeof(TimeZone); 
+  ErrorType et = MyApp::get().getNVS().getValue(TZKEY, &TimeZone[0], len);
+  if(!et.ok()) {
+    strcpy(&TimeZone[0],"NOT SET");
+  }
+  cJSON *root = cJSON_CreateObject();
+  cJSON_AddStringToObject(root, "TZ", &TimeZone[0]);
+  const char *info = cJSON_Print(root);
+  httpd_resp_sendstr(req, info);
+  free((void *)info);
+  cJSON_Delete(root);
+  return ESP_OK;
+}
+
+esp_err_t WiFiMenu::handleSetTZ(httpd_req_t *req) {
+  ESP_LOGI(LOGTAG,"handleSetTZ");
+  ErrorType et = ESP_OK;
+  char buf[128];
+  int total_len = req->content_len;
+  int cur_len = 0;
+  int received = 0;
+
+  if (total_len >= sizeof(buf)) {
+    /* Respond with 500 Internal Server Error */
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "content too long");
+    return ESP_FAIL;
+  }
+  while (cur_len < total_len) {
+    received = httpd_req_recv(req, buf + cur_len, total_len);
+    if (received <= 0) {
+      /* Respond with 500 Internal Server Error */
+      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to post control value");
+      return ESP_FAIL;
+    }
+    cur_len += received;
+  }
+  buf[total_len] = '\0';
+
+  ESP_LOGI(LOGTAG,"before decode: %s", &buf[0]);
+  char decodeBuf[sizeof(buf)];
+  urlDecode(&buf[0], &decodeBuf[0], sizeof(decodeBuf));
+  ESP_LOGI(LOGTAG,"after decode: %s", &decodeBuf[0]);
+  char tz[8] = {'\0'};
+  if((et=httpd_query_key_value(&decodeBuf[0],"tz", &tz[0], sizeof(tz)))==ESP_OK) {
+    et = MyApp::get().getNVS().setValue(TZKEY, &TimeZone[0]);
+  }
+  if(et.ok()) {
+    const char *pageData = "<html><head><title>TZ Set</title><meta http-equiv=\"refresh\" content=\"5;URL='/'\"/></head><body><p>TZ Saved Successfully</p></body></html>";
+    httpd_resp_sendstr(req, pageData);
+  } else {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "failed to save TimeZone");
+  }
+  return et.getErrT();
+}
+
 esp_err_t WiFiMenu::handleSystemInfo(httpd_req_t *req) {
   httpd_resp_set_type(req, "application/json");
   cJSON *root = cJSON_CreateObject();
-  esp_chip_info_t chip_info;
-  esp_chip_info(&chip_info);
-  cJSON_AddStringToObject(root, "version", IDF_VER);
-  cJSON_AddNumberToObject(root, "cores", chip_info.cores);
+  esp_chip_info_t ChipInfo;
+  esp_chip_info(&ChipInfo);
+  cJSON_AddNumberToObject(root, "Free HeapSize", System::get().getFreeHeapSize());
+  cJSON_AddNumberToObject(root, "Free Min HeapSize",System::get().getMinimumFreeHeapSize());
+  cJSON_AddNumberToObject(root, "Free 32 Bit HeapSize",heap_caps_get_free_size(MALLOC_CAP_32BIT));
+  cJSON_AddNumberToObject(root, "Free 32 Bit Min HeapSize",heap_caps_get_minimum_free_size(MALLOC_CAP_32BIT));
+  cJSON_AddNumberToObject(root, "Free DMA HeapSize",heap_caps_get_free_size(MALLOC_CAP_DMA));
+  cJSON_AddNumberToObject(root, "Free DMA Min HeapSize",heap_caps_get_minimum_free_size(MALLOC_CAP_DMA));
+  cJSON_AddNumberToObject(root, "Free Internal HeapSize",heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+  cJSON_AddNumberToObject(root, "Free Internal Min HeapSize",heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
+  cJSON_AddNumberToObject(root, "Free Default HeapSize",heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
+  cJSON_AddNumberToObject(root, "Free Default Min HeapSize",heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
+  cJSON_AddNumberToObject(root, "Free Exec",heap_caps_get_free_size(MALLOC_CAP_EXEC));
+  cJSON_AddNumberToObject(root, "Free Exec Min",heap_caps_get_minimum_free_size(MALLOC_CAP_EXEC));
+  cJSON_AddNumberToObject(root, "Model", ChipInfo.model);
+  cJSON_AddNumberToObject(root, "Features", ChipInfo.features);
+  cJSON_AddNumberToObject(root, "EMB_FLASH", (ChipInfo.features&CHIP_FEATURE_EMB_FLASH)!=0);
+  cJSON_AddNumberToObject(root, "WIFI_BGN", (ChipInfo.features&CHIP_FEATURE_WIFI_BGN)!=0);
+  cJSON_AddNumberToObject(root, "BLE", (ChipInfo.features&CHIP_FEATURE_BLE)!=0);
+  cJSON_AddNumberToObject(root, "BT", (ChipInfo.features&CHIP_FEATURE_BT)!=0);
+  cJSON_AddNumberToObject(root, "Cores", (int)ChipInfo.cores);
+  cJSON_AddNumberToObject(root, "Revision", (int)ChipInfo.revision);
+  cJSON_AddStringToObject(root, "IDF Version", ::esp_get_idf_version());
   const char *sys_info = cJSON_Print(root);
   httpd_resp_sendstr(req, sys_info);
   free((void *)sys_info);
@@ -427,6 +516,18 @@ const httpd_uri_t SysInfo = {
   .handler   = http_handler,
   .user_ctx  = &SystemInfoCtx
 };
+const httpd_uri_t GetTZURI = {
+  .uri       = "/tz",
+  .method    = HTTP_GET,
+  .handler   = http_handler,
+  .user_ctx  = &GetTZCtx
+};
+const httpd_uri_t SetTZURI = {
+  .uri       = "/tz",
+  .method    = HTTP_POST,
+  .handler   = http_handler,
+  .user_ctx  = &SetTZCtx
+};
 static const httpd_uri_t root = {
   .uri       = "/",
   .method    = HTTP_GET,
@@ -440,7 +541,6 @@ static const httpd_uri_t st = {
   .user_ctx  = &RootCtx
 };
 
-
 ErrorType WiFiMenu::apStart() {
   ErrorType et;
   Flags|=AP_START;
@@ -448,36 +548,29 @@ ErrorType WiFiMenu::apStart() {
   et = WebServer.start();
   if(et.ok()) {
     et = WebServer.registerHandle(scan);
-    if(et.ok()) {
-      et = WebServer.registerHandle(conData);
-      if(et.ok()) {
-        et = WebServer.registerHandle(cal);
-        if(et.ok()){
-          et = WebServer.registerHandle(resetcal);
-          if(et.ok()) {
-            et = WebServer.registerHandle(SysInfo);
-            if(et.ok()) {
-              et = WebServer.registerHandle(root);
-              if(et.ok()) {
-                et = WebServer.registerHandle(st);
-              } else {
-                ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
-              }
-            } else {
-              ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
-            }
-          } else {
-            ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
-          } 
-        } else {
-          ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
-        } 
-      } else {
-        ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
-      }
-    } else {
-      ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
-    }
+    if(et.ok())  et = WebServer.registerHandle(conData);
+    else ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+
+    if(et.ok())  et = WebServer.registerHandle(cal);
+    else ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+
+    if(et.ok()) et = WebServer.registerHandle(resetcal);
+    else ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+    
+    if(et.ok())  et = WebServer.registerHandle(SysInfo);
+    else ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+    
+    if(et.ok()) et = WebServer.registerHandle(GetTZURI);
+    else ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+    
+    if(et.ok())  et = WebServer.registerHandle(SetTZURI);
+    else ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+   
+    if(et.ok())  et = WebServer.registerHandle(root);
+    else ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+
+    if(et.ok())  et = WebServer.registerHandle(st);
+    else ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
   } else {
     ESP_LOGI(LOGTAG,"Error starting web server: %d: %s", et.getErrT(), et.toString());
   }
