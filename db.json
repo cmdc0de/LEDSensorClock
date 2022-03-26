@@ -29,5 +29,12 @@
       "xmax": 1,
       "ymax": 10
     }
-  ]
+  ],
+  "systeminfo": [
+    {
+      "one": "one",
+      "two": 2
+    }
+  ],
+  "tz": "AZ"
 }

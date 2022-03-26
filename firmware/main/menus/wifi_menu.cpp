@@ -11,6 +11,7 @@
 #include <cJSON.h>
 #include <system.h>
 #include <net/utilities.h>
+#include <time.h>
 
 using libesp::ErrorType;
 using libesp::BaseMenu;
@@ -170,6 +171,7 @@ esp_err_t WiFiMenu::handleRoot(httpd_req_t *req) {
 WiFiMenu::WiFiMenu() : WiFiEventHandler(), MyWiFi()
   , NTPTime(), SSID(), Password(), Flags(0), ReTryCount(0), WebServer(), TimeZone() {
   memset(&TimeZone[0],0,sizeof(TimeZone));
+  strcpy(&TimeZone[0],"Etc/GMT");
 }
 
 
@@ -220,6 +222,12 @@ ErrorType WiFiMenu::clearConnectData() {
   return et;
 }
 
+void WiFiMenu::setTZ() {
+  setenv("TZ", &TimeZone[0], 1);
+  tzset();
+  ESP_LOGI(LOGTAG,"Timezone set to: %s", &TimeZone[0]);
+}
+
 ErrorType WiFiMenu::initWiFi() {
   MyWiFi.setWifiEventHandler(this);
   ErrorType et = MyWiFi.init(WIFI_MODE_APSTA);
@@ -234,6 +242,7 @@ ErrorType WiFiMenu::initWiFi() {
       et = WebServer.init(cacert_pem_start, (cacert_pem_end-cacert_pem_start), prvtkey_pem_start, (prvtkey_pem_end-prvtkey_pem_start));
     }
   }
+  setTZ();
   return et;
 }
 
@@ -362,7 +371,7 @@ esp_err_t WiFiMenu::handleGetTZ(httpd_req_t *req) {
   uint32_t len = sizeof(TimeZone); 
   ErrorType et = MyApp::get().getNVS().getValue(TZKEY, &TimeZone[0], len);
   if(!et.ok()) {
-    strcpy(&TimeZone[0],"NOT SET");
+    strcpy(&TimeZone[0],"Etc/GMT");
   }
   cJSON *root = cJSON_CreateObject();
   cJSON_AddStringToObject(root, "TZ", &TimeZone[0]);
@@ -398,14 +407,14 @@ esp_err_t WiFiMenu::handleSetTZ(httpd_req_t *req) {
   buf[total_len] = '\0';
 
   ESP_LOGI(LOGTAG,"before decode: %s", &buf[0]);
-  char decodeBuf[sizeof(buf)];
-  urlDecode(&buf[0], &decodeBuf[0], sizeof(decodeBuf));
-  ESP_LOGI(LOGTAG,"after decode: %s", &decodeBuf[0]);
-  char tz[8] = {'\0'};
-  if((et=httpd_query_key_value(&decodeBuf[0],"tz", &tz[0], sizeof(tz)))==ESP_OK) {
-    et = MyApp::get().getNVS().setValue(TZKEY, &TimeZone[0]);
-  }
+
+  cJSON *root = cJSON_Parse(&buf[0]);
+  strcpy(&TimeZone[0],cJSON_GetObjectItem(root,"value")->valuestring);
+  et = MyApp::get().getNVS().setValue(TZKEY, &TimeZone[0]);
+  cJSON_Delete(root);
+
   if(et.ok()) {
+    setTZ();
     const char *pageData = "<html><head><title>TZ Set</title><meta http-equiv=\"refresh\" content=\"5;URL='/'\"/></head><body><p>TZ Saved Successfully</p></body></html>";
     httpd_resp_sendstr(req, pageData);
   } else {
@@ -415,10 +424,11 @@ esp_err_t WiFiMenu::handleSetTZ(httpd_req_t *req) {
 }
 
 esp_err_t WiFiMenu::handleSystemInfo(httpd_req_t *req) {
+  ESP_LOGI(LOGTAG,"handleSystemInfo");
   httpd_resp_set_type(req, "application/json");
-  cJSON *root = cJSON_CreateObject();
   esp_chip_info_t ChipInfo;
   esp_chip_info(&ChipInfo);
+  cJSON *root = cJSON_CreateObject();
   cJSON_AddNumberToObject(root, "Free HeapSize", System::get().getFreeHeapSize());
   cJSON_AddNumberToObject(root, "Free Min HeapSize",System::get().getMinimumFreeHeapSize());
   cJSON_AddNumberToObject(root, "Free 32 Bit HeapSize",heap_caps_get_free_size(MALLOC_CAP_32BIT));

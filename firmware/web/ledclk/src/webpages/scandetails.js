@@ -2,6 +2,7 @@ import React, {useState} from 'react'
 import { useSelector } from 'react-redux'
 import { selectAllAPs } from '../features/scan/scanSlice'
 import { useParams } from 'react-router-dom'
+import { Header } from './header'
 
 const ScanDetails = () => {
   const { apid } = useParams();
@@ -19,6 +20,8 @@ const ScanDetails = () => {
   }
 
   return (
+    <div>
+    <Header/>
     <section>
       <article >
         <h2>{ap.ssid}</h2><br/>
@@ -46,6 +49,7 @@ const ScanDetails = () => {
         </div>
       </article>
     </section>
+    </div>
   )
 }
 

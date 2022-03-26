@@ -29,7 +29,7 @@ export const sysinfoSlice = createSlice({
       .addCase(fetchSysInfo.fulfilled, (state, action) => {
         state.status = 'succeeded'
         // Add any fetched posts to the array
-        state.aps = state.sysinfo.concat(action.payload)
+        state.sinfo = state.sinfo.concat(action.payload)
       })
       .addCase(fetchSysInfo.rejected, (state, action) => {
         state.status = 'failed'

@@ -74,6 +74,7 @@ protected:
   bool isFlagSet(uint32_t f) {return ((f&Flags)!=0);}
   void setContentTypeFromFile(httpd_req_t *req, const char *filepath);
   libesp::ErrorType setWiFiConnectionData(const char *ssid, const char *pass);
+  void setTZ();
 private:
   libesp::WiFi MyWiFi;
   libesp::NTP NTPTime;
@@ -82,7 +83,7 @@ private:
   uint32_t    Flags;
   uint16_t    ReTryCount;
   libesp::HTTPWebServer WebServer;
-  char        TimeZone[8];
+  char        TimeZone[32];
 };
 
 #endif

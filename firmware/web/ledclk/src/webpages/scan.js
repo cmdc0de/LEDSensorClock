@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import { Link } from 'react-router-dom'
 import "../App.css"
 import {selectAllAPs,fetchAps} from '../features/scan/scanSlice'
+import { Header } from './header'
 
 const ApRow = ({ ap }) => {
   return (
@@ -41,6 +42,8 @@ const Scan = () => {
   }
 
   return (
+    <div>
+    <Header/>
     <table className="tg">
       <thead>
         <tr>
@@ -55,6 +58,7 @@ const Scan = () => {
       {content}
       </tbody>
     </table>
+    </div>
   );
 }
 
