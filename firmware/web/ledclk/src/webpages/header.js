@@ -7,6 +7,7 @@ export function Header() {
           <table>
             <tbody>
               <tr>
+                <td><Link to={`/`}> Home </Link> </td>
                 <td><Link to={`/scan`}> Scan </Link> </td>
                 <td><Link to={`/sinfo`}> SystemInfo </Link></td>
                 <td><Link to={'/calibration'}> Calibration Data </Link></td>

@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { client } from '../../api/client'
 
 const initialState = {
-  calData: [],
+  calData: {},
   status: 'idle',
   error: null,
 }
@@ -10,7 +10,7 @@ const initialState = {
 export const fetchCalibrationData = createAsyncThunk('calibrationData/fetchCalibrationData', async () => {
   var uri = '/calibration';
   if (process.env.NODE_ENV !== 'production') {
-    uri = 'https://my-json-server.typicode.com/cmdc0de/LEDSensorClock/calibrationdata';
+    uri = 'http://localhost:5000/calibration';
   }
   const response = await client.get(uri);
   return response.data
@@ -29,7 +29,7 @@ export const calibrationSlice = createSlice({
       .addCase(fetchCalibrationData.fulfilled, (state, action) => {
         state.status = 'succeeded'
         // Add any fetched posts to the array
-        state.calData = state.calData.concat(action.payload)
+        state.calData = action.payload
       })
       .addCase(fetchCalibrationData.rejected, (state, action) => {
         state.status = 'failed'

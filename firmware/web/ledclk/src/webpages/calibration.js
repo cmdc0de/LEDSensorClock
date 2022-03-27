@@ -3,17 +3,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import { Link } from 'react-router-dom'
 import "../App.css"
 import {fetchCalibrationData, calibrationAllData} from '../features/calibration/calibrationSlice'
-
-const CalRow = ({ cdata }) => {
-  return (
-    <tr>
-      <td className="tg-e6ik"> {cdata.xmin}</td>
-      <td className="tg-e6ik"> {cdata.xmax}</td>
-      <td className="tg-e6ik"> {cdata.ymin}</td>
-      <td className="tg-e6ik"> {cdata.ymax}</td>
-    </tr>
-  )
-}
+import { JsonToTable } from "react-json-to-table";
 
 const Calibration = () => {
   const dispatch = useDispatch()
@@ -32,9 +22,7 @@ const Calibration = () => {
   if (postStatus==='loading') {
     content = <div>Loading...</div>;
   } else if (postStatus === 'succeeded') {
-    content = calData.map((cdata) => (
-      <CalRow cdata={cdata} />
-    ))
+    content = <JsonToTable json={calData} />
   } else if(postStatus==='failed') {
     return <div>Error: {error}</div>;
   }
@@ -42,22 +30,8 @@ const Calibration = () => {
   return (
   <div>
   <form action="/resetcal" method="post">
-    <table className="tg">
-      <thead>
-        <tr>
-          <td className="tg-e6ik"> xmin</td>
-          <td className="tg-e6ik"> xmax</td>
-          <td className="tg-e6ik"> ymin</td>
-          <td className="tg-e6ik"> ymax</td>
-        </tr>
-      </thead>
-      <tbody>
-      {content}
-      <tr>
-        <td colspan="4"><center> <input type="submit" value="Reset Calibration"/></center></td>
-      </tr>
-      </tbody>
-    </table>
+    {content}
+    <input type="submit" value="Reset Calibration"/>
   </form>
   </div>
   );

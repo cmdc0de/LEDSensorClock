@@ -3,23 +3,13 @@ import { useSelector, useDispatch } from 'react-redux'
 import "../App.css"
 import { selectAllsinfo, fetchSysInfo } from '../features/system/sysinfo'
 import { Header } from './header'
-
-const SinfoRow = ({ r }) => {
-  return (
-  //  for(let x in r) {
-      <tr>
-        <td className="tg-e6ik"> x    </td>
-        <td className="tg-e6ik"> r[x] </td>
-      </tr>
-//    }
-  )
-}
+import { JsonToTable } from "react-json-to-table";
 
 const SInfo  = () => {
   const dispatch = useDispatch()
   const sinfo = useSelector(selectAllsinfo)
-  const postStatus = useSelector(state => state.scanResults.status)
-  const error = useSelector(state => state.scanResults.error)
+  const postStatus = useSelector(state => state.sysinfo.status)
+  const error = useSelector(state => state.sysinfo.error)
 
   useEffect(() => { 
     if (postStatus === 'idle') {
@@ -32,9 +22,7 @@ const SInfo  = () => {
   if (postStatus==='loading') {
     content = <div>Loading...</div>;
   } else if (postStatus === 'succeeded') {
-    content = sinfo.map((row) => (
-      <SinfoRow r={row} />
-    ))
+    content = <JsonToTable json={sinfo} />
   } else if(postStatus==='failed') {
     return <div>Error: {error}</div>;
   }
@@ -42,17 +30,7 @@ const SInfo  = () => {
   return (
     <div>
     <Header/>
-    <table className="tg">
-      <thead>
-        <tr>
-          <td className="tg-e6ik"> Name</td>
-          <td className="tg-e6ik"> Value</td>
-        </tr>
-      </thead>
-      <tbody>
       {content}
-      </tbody>
-    </table>
     </div>
   );
 }

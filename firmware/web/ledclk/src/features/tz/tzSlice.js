@@ -10,7 +10,7 @@ const initialState = {
 export const fetchTZ = createAsyncThunk('sysinfo/FetchTZ', async() => {
   var uri = '/tz';
   if (process.env.NODE_ENV !== 'production') {
-    uri = 'https://my-json-server.typicode.com/cmdc0de/LEDSensorClock/tz';
+    uri = 'http://localhost:5000/tz';
   }
   const response = await client.get(uri);
   return response.data
@@ -19,7 +19,7 @@ export const fetchTZ = createAsyncThunk('sysinfo/FetchTZ', async() => {
 export const setClockTZ  = createAsyncThunk('posts/setClockTZ', async (tzData) => {
     var uri = '/tz';
     if (process.env.NODE_ENV !== 'production') {
-      uri = 'https://my-json-server.typicode.com/cmdc0de/LEDSensorClock/tz';
+      uri = 'http://localhost:5000/tz';
     }
     const response = await client.post(uri, tzData)
     return response.data
