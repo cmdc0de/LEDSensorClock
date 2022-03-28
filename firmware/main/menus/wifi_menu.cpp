@@ -343,10 +343,8 @@ esp_err_t WiFiMenu::handleSetConData(httpd_req_t *req) {
 esp_err_t WiFiMenu::handleCalibration(httpd_req_t *req) {
   esp_err_t et = ESP_OK;
   httpd_resp_set_type(req, "application/json");
-  cJSON *root = cJSON_CreateArray();
-  cJSON *sr = cJSON_CreateObject();
-  MyApp::get().getCalibrationMenu()->calibrationData(sr);
-  cJSON_AddItemToArray(root,sr);
+  cJSON *root = cJSON_CreateObject();
+  MyApp::get().getCalibrationMenu()->calibrationData(root);
   const char *info = cJSON_Print(root);
   ESP_LOGI(LOGTAG, "%s", info);
   httpd_resp_sendstr(req, info);

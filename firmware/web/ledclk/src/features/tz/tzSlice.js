@@ -2,7 +2,8 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { client } from '../../api/client'
 
 const initialState = {
-  tz: 'AZ',
+  tz: { "value": "America/Phoenix", "label": "(GMT-7:00) Arizona", "offset": -7, "abbrev": "MST",
+      "altName": "Mountain Standard Time" },
   status: 'idle',
   error: null,
 }
@@ -17,9 +18,9 @@ export const fetchTZ = createAsyncThunk('sysinfo/FetchTZ', async() => {
 })
 
 export const setClockTZ  = createAsyncThunk('posts/setClockTZ', async (tzData) => {
-    var uri = '/tz';
+    var uri = '/settz';
     if (process.env.NODE_ENV !== 'production') {
-      uri = 'http://localhost:5000/tz';
+      uri = 'http://localhost:5000/settz';
     }
     const response = await client.post(uri, tzData)
     return response.data
@@ -47,6 +48,7 @@ export const tzSlice = createSlice({
       })
       .addCase(setClockTZ.fulfilled, (state, action) => {
         state.status = 'succeeded'
+        console.log(action.payload);
         state.tz = action.payload
       })
   }
