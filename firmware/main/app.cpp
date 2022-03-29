@@ -30,6 +30,7 @@
 #include "appmsg.h"
 #include <math/point.h>
 #include <esp_spiffs.h>
+#include <time.h>
 
 using libesp::ErrorType;
 using libesp::System;
@@ -297,31 +298,6 @@ libesp::ErrorType MyApp::onInit() {
     ESP_LOGE(LOGTAG,"Error Num :%d Msg: %s", et.getErrT(), et.toString());
   }
 
-#if 0
-  {
-    ESP_LOGI(LOGTAG,"****************TESTING***************************");
-    char password[128];
-    char ssid[64];
-    strcpy(&ssid[0],"dac-nh");
-    strcpy(&password[0],"nopenothere");
-    ErrorType et = MyApp::get().getNVS().setValue("SSID", &ssid[0]);
-    ESP_LOGI(LOGTAG,"result: %d %s", et.getErrT(), et.toString());
-    et = MyApp::get().getNVS().setValue("PASSWORD",password);
-    ESP_LOGI(LOGTAG,"result: %d %s", et.getErrT(), et.toString());
-    MyApp::get().getNVS().commit();
-    memset(&password[0],0,sizeof(password));
-    memset(&ssid[0],0,sizeof(ssid));
-    uint32_t ls = sizeof(ssid);
-    et = MyApp::get().getNVS().getValue("SSID", &ssid[0],ls);
-    ESP_LOGI(LOGTAG,"result: %u %d %s", ls, et.getErrT(), et.toString());
-    uint32_t lp = sizeof(password);
-    et = MyApp::get().getNVS().getValue("PASSWORD",password, lp);
-    ESP_LOGI(LOGTAG,"result: %u %d %s", lp, et.getErrT(), et.toString());
-    ESP_LOGI(LOGTAG,"****************loading***************************");
-    ESP_LOGI(LOGTAG,"****************TESTING***************************");
-  }
-#endif
-
   if(!MyCalibrationMenu.hasBeenCalibrated()) {
 		setCurrentMenu(getCalibrationMenu());
 	} else {
@@ -377,12 +353,6 @@ ErrorType MyApp::onRun() {
       LightSensor.acquireData(LSensorResult);
       LightSensorCounter=0;
     }
-    //ESP_LOGI(LOGTAG, "RAW: %u Voltage: %u", r.RawAvg, r.CalculatedVoltage);
-    //char buf[32];
-    //sprintf(&buf[0],"R: %u V: %u mV", r.RawAvg, r.CalculatedVoltage);
-    //Display.drawString(3,110,&buf[0],libesp::RGBColor::WHITE);
-    //sprintf(&buf[0],"CO2: %d", CO2);
-    //Display.drawString(3,130,&buf[0],libesp::RGBColor::WHITE);
 
     switch(CurrentMode) {
     case ONE:

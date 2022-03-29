@@ -242,6 +242,14 @@ ErrorType WiFiMenu::initWiFi() {
       et = WebServer.init(cacert_pem_start, (cacert_pem_end-cacert_pem_start), prvtkey_pem_start, (prvtkey_pem_end-prvtkey_pem_start));
     }
   }
+  uint32_t len = sizeof(TimeZone); 
+  et = MyApp::get().getNVS().getValue(TZKEY, &TimeZone[0], len);
+  if(!et.ok()) {
+    strcpy(&TimeZone[0],"Etc/GMT");
+    ESP_LOGI(LOGTAG,"Timezone not set, defaulting to %s", &TimeZone[0]);
+  } else {
+    ESP_LOGI(LOGTAG,"Timezone loaded: %s", &TimeZone[0]);
+  }
   setTZ();
   return et;
 }
@@ -335,8 +343,8 @@ esp_err_t WiFiMenu::handleSetConData(httpd_req_t *req) {
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "invalid ID");
   }
 
-  //TODO
-  httpd_resp_sendstr(req, "Post control value successfully");
+  const char *pageData = "<html><head><title>TZ Set</title><meta http-equiv=\"refresh\" content=\"5;URL='/'\"/></head><body><p>Connect Data  Saved Successfully</p></body></html>";
+  httpd_resp_sendstr(req, pageData);
   return et.getErrT();
 }
 
@@ -407,13 +415,15 @@ esp_err_t WiFiMenu::handleSetTZ(httpd_req_t *req) {
   ESP_LOGI(LOGTAG,"before decode: %s", &buf[0]);
 
   cJSON *root = cJSON_Parse(&buf[0]);
-  strcpy(&TimeZone[0],cJSON_GetObjectItem(root,"value")->valuestring);
+  int offset = cJSON_GetObjectItem(root,"offset")->valueint;
+  offset*=-1;//not sure why I have to do this??? AZ is UTC - 7 but must be set as UTC+7
+  sprintf(&TimeZone[0],"UTC%d",offset);
   et = MyApp::get().getNVS().setValue(TZKEY, &TimeZone[0]);
   cJSON_Delete(root);
 
   if(et.ok()) {
     setTZ();
-    const char *pageData = "<html><head><title>TZ Set</title><meta http-equiv=\"refresh\" content=\"5;URL='/'\"/></head><body><p>TZ Saved Successfully</p></body></html>";
+    const char *pageData = "{result: 'ok'}";
     httpd_resp_sendstr(req, pageData);
   } else {
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "failed to save TimeZone");
@@ -531,7 +541,7 @@ const httpd_uri_t GetTZURI = {
   .user_ctx  = &GetTZCtx
 };
 const httpd_uri_t SetTZURI = {
-  .uri       = "/tz",
+  .uri       = "/settz",
   .method    = HTTP_POST,
   .handler   = http_handler,
   .user_ctx  = &SetTZCtx

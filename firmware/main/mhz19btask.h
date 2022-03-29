@@ -9,11 +9,12 @@
 
 class MHZ19Msg : public MyAppMsg {
 public:
-  MHZ19Msg(int16_t v) : MyAppMsg(), CO2(v) {}
+  MHZ19Msg(int16_t v, float p) : MyAppMsg(), CO2(v), Percent(p) {}
   virtual bool handleMessage(MyApp *);
   virtual ~MHZ19Msg() {}
 private:
   int16_t CO2;
+  float Percent;
 };
 
 class MHZ19Task : public Task {

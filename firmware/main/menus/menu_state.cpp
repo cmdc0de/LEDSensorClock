@@ -18,16 +18,22 @@ static StaticQueue_t InternalQueue;
 static uint8_t InternalQueueBuffer[MenuState::QUEUE_SIZE*MenuState::MSG_SIZE] = {0};
 static const char *LOGTAG = "MenuState";
 
-static libesp::RectBBox2D TempBV(Point2Ds(30,40), 25, 15);
+static libesp::RectBBox2D TempBV(Point2Ds(30,37), 20, 15);
 static libesp::Label TempLabel(uint16_t(0), (const char *)"Temp", &TempBV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
-static libesp::RectBBox2D HumBV(Point2Ds(100,40), 25, 15);
+static libesp::RectBBox2D HumBV(Point2Ds(90,37), 20, 15);
 static libesp::Label HumLabel (uint16_t(0), (const char *)"Humidity", &HumBV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
 
-static libesp::RectBBox2D SettingRect(Point2Ds(110,85), 30, 15);
+static libesp::RectBBox2D CO2BV(Point2Ds(150,37), 20, 15);
+static libesp::Label CO2Label (uint16_t(0), (const char *)"CO2", &CO2BV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
+
+static libesp::RectBBox2D LSBV(Point2Ds(30,120), 20, 15);
+static libesp::Label LSLabel (uint16_t(0), (const char *)"Light", &LSBV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
+
+static libesp::RectBBox2D SettingRect(Point2Ds(140,120), 30, 15);
 static libesp::Button SettingBtn((const char *)"Settings", uint16_t(2), &SettingRect, RGBColor::BLUE, RGBColor::WHITE);
 
-static const int8_t NUM_INTERFACE_ITEMS = 3;
-static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&TempLabel, &HumLabel, &SettingBtn};
+static const int8_t NUM_INTERFACE_ITEMS = 5;
+static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&TempLabel, &HumLabel, &CO2Label, &LSLabel, &SettingBtn};
 
 MenuState::MenuState() :
 	AppBaseMenu(),
@@ -75,13 +81,24 @@ libesp::BaseMenu::ReturnStateContext MenuState::onRun() {
   TempLabel.setDisplayText(&buf[0]);
   sprintf(&buf[0],"%2.1f",MyApp::get().getHumidity());
   HumLabel.setDisplayText(&buf[0]);
+  sprintf(&buf[0],"%d", MyApp::get().getCO2());
+  CO2Label.setDisplayText(&buf[0]);
+  sprintf(&buf[0],"%u", MyApp::get().getLightCalcVoltage());
+  LSLabel.setDisplayText(&buf[0]);
 
 	MyLayout.draw(&MyApp::get().getDisplay());
     
-  sprintf(&buf[0],"R: %u V: %u mV", MyApp::get().getLightSensorRaw(), MyApp::get().getLightCalcVoltage());
-  MyApp::get().getDisplay().drawString(3,110,&buf[0],libesp::RGBColor::WHITE);
-  sprintf(&buf[0],"CO2: %d", MyApp::get().getCO2());
-  MyApp::get().getDisplay().drawString(3,130,&buf[0],libesp::RGBColor::WHITE);
+  time_t now = 0;
+  time(&now);
+  struct tm timeinfo;
+  memset(&timeinfo,0,sizeof(timeinfo));
+  localtime_r(&now, &timeinfo);
+  strftime(buf, sizeof(buf), "%c", &timeinfo);
+  MyApp::get().getDisplay().drawString(3,70,&buf[0],libesp::RGBColor::WHITE);
+ // sprintf(&buf[0],"R: %u V: %u mV", MyApp::get().getLightSensorRaw(), MyApp::get().getLightCalcVoltage());
+  //MyApp::get().getDisplay().drawString(3,130,&buf[0],libesp::RGBColor::WHITE);
+  //sprintf(&buf[0],"%d", MyApp::get().getCO2());
+  //MyApp::get().getDisplay().drawString(3,130,&buf[0],libesp::RGBColor::WHITE);
 
 	if(widgetHit) {
 		ESP_LOGI(LOGTAG, "Widget %s hit\n", widgetHit->getName());

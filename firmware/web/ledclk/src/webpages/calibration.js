@@ -1,9 +1,9 @@
 import React, { useEffect }  from 'react';
 import { useSelector, useDispatch } from 'react-redux'
-import { Link } from 'react-router-dom'
 import "../App.css"
 import {fetchCalibrationData, calibrationAllData} from '../features/calibration/calibrationSlice'
 import { JsonToTable } from "react-json-to-table";
+import { Header } from './header'
 
 const Calibration = () => {
   const dispatch = useDispatch()
@@ -29,6 +29,7 @@ const Calibration = () => {
 
   return (
   <div>
+    <Header/>
   <form action="/resetcal" method="post">
     {content}
     <input type="submit" value="Reset Calibration"/>

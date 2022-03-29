@@ -1,4 +1,4 @@
-import React, {useState} from 'react'
+import React from 'react'
 import { useSelector } from 'react-redux'
 import { selectAllAPs } from '../features/scan/scanSlice'
 import { useParams } from 'react-router-dom'
@@ -8,8 +8,6 @@ const ScanDetails = () => {
   const { apid } = useParams();
   const aps = useSelector(selectAllAPs)
   const ap = aps.find(a => a.id == apid);
-  const canSave = true
-  const [addRequestStatus, setAddRequestStatus] = useState('idle')
 
   if (!ap) {
     return (

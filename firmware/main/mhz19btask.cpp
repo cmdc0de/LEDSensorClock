@@ -62,8 +62,11 @@ void MHZ19Task::run(void *data) {
   while(1) {
     int16_t co2;
     CO2Sensor.readCO2(co2);
+    uint16_t range;
+    CO2Sensor.getRange(range);
+    float pcent = static_cast<float>(co2)/static_cast<float>(range);
     ESP_LOGI(LOGTAG, "CO2: %d", co2);
-      MHZ19Msg *msg = new MHZ19Msg(co2);
+      MHZ19Msg *msg = new MHZ19Msg(co2,pcent);
       if(errQUEUE_FULL==xQueueSend(MyApp::get().getMessageQueueHandle(), &msg, 0)) {
         delete msg;
       }
