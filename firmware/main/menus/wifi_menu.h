@@ -57,6 +57,8 @@ public:
   esp_err_t handleSystemInfo(httpd_req_t *req);
   esp_err_t handleGetTZ(httpd_req_t *req);
   esp_err_t handleSetTZ(httpd_req_t *req);
+  esp_err_t handleGetSettings(httpd_req_t *req);
+  esp_err_t handleSetSettings(httpd_req_t *req);
 public:
   virtual libesp::ErrorType staStart();
   virtual libesp::ErrorType staStop();

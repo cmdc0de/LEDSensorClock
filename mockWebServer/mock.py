@@ -16,6 +16,9 @@ sinfo = { "Free HeapSize": 1, "Free Min HeapSize": 1, "Free 32 Bit HeapSize": 1,
     "Free Exec Min": 1, "Model":1,  "Features":1, "EMB_FLASH":1, "WIFI_BGN":1,
     "BLE":1, "BT":1, "Cores":2, "Revision":1, "IDF Version": 'versionifo' }
 
+settings = [{"name": "SecondsOnMainScreen", "value": 300}, {"name": "SecondsInGameOfLife", "value": 300}, 
+        { "name" : "SecondsIn3D", "value": 300}, {"name": "SecondsShowingDrawings", "value": 120} ]
+
 tz = { "tz": 'Etc/GMT'}
 
 api = Flask(__name__)
@@ -43,6 +46,10 @@ def post_tz():
   print(type(request_data))
   print("post data  is ", request_data)
   return json.dumps(tz)
+
+@api.route('/setting', methods=['GET'])
+def get_settings():
+  return json.dumps(settings)
 
 if __name__ == '__main__':
     api.run()

@@ -37,6 +37,7 @@ const Home = () => {
             <h1><Link to={`/scan`}> Scan </Link></h1>
             <h1><Link to={`/sinfo`}> SystemInfo </Link></h1>
             <h1><Link to={'/calibration'}> Calibration Data </Link></h1>
+            <h1><Link to={'/setting'}> Setting </Link></h1>
             <br/>
             <TimezoneSelect style={{ width: "50px" }} value={tz} onChange={setTz} />
             <button onClick={postTZ}>

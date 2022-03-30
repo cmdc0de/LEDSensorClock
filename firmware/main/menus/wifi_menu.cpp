@@ -29,6 +29,11 @@ const char *WiFiMenu::WIFIPASSWD = "WPASSWD";
 const char *WiFiMenu::TZKEY      = "TZKEY";
 const char *WiFiMenu::CLKNAME    = "My Sensor Clock";
 static etl::vector<libesp::WiFiAPRecord,16> ScanResults;
+static const uint32_t FILE_PATH_MAX = 128;
+
+static const char *SettingArray[] = {"SecondsOnMainScreen", "SecondsInGameOfLife", "SecondsIn3D", "SecondsShowingDrawings"};
+static const int SettingArrayDefault[] = {300,300,300,120};
+static const uint32_t SettingArraySize = (sizeof(SettingArray)/sizeof(SettingArray[0]));
 
 void time_sync_cb(struct timeval *tv) {
     ESP_LOGI(WiFiMenu::LOGTAG, "Notification of a time synchronization event");
@@ -44,6 +49,8 @@ struct RequestContextInfo {
     , SYSTEM_INFO
     , GET_TZ
     , SET_TZ
+    , GET_SETTINGS
+    , SET_SETTINGS
   };
   HandlerType HType;
   RequestContextInfo(const HandlerType &ht) : HType(ht) {}
@@ -74,6 +81,12 @@ struct RequestContextInfo {
       case SET_TZ:
         return MyApp::get().getWiFiMenu()->handleSetTZ(r);
         break;
+      case GET_SETTINGS:
+        return MyApp::get().getWiFiMenu()->handleGetSettings(r);
+        break;
+      case SET_SETTINGS:
+        return MyApp::get().getWiFiMenu()->handleSetSettings(r);
+        break;
       default:
         return ESP_OK;
         break;
@@ -89,6 +102,8 @@ static RequestContextInfo ResetCalCtx(RequestContextInfo::HandlerType::RESET_CAL
 static RequestContextInfo SystemInfoCtx(RequestContextInfo::HandlerType::SYSTEM_INFO);
 static RequestContextInfo GetTZCtx(RequestContextInfo::HandlerType::GET_TZ);
 static RequestContextInfo SetTZCtx(RequestContextInfo::HandlerType::SET_TZ);
+static RequestContextInfo GetSettingsCtx(RequestContextInfo::HandlerType::GET_SETTINGS);
+static RequestContextInfo SetSettingsCtx(RequestContextInfo::HandlerType::SET_SETTINGS);
 
 static esp_err_t http_handler(httpd_req_t *req) {
   RequestContextInfo *rci = reinterpret_cast<RequestContextInfo *>(req->user_ctx);
@@ -116,7 +131,77 @@ void WiFiMenu::setContentTypeFromFile(httpd_req_t *req, const char *filepath) {
   httpd_resp_set_type(req, type);
 }
 
-static const uint32_t FILE_PATH_MAX = 128;
+
+esp_err_t WiFiMenu::handleSetSettings(httpd_req_t *req) {
+  ESP_LOGI(LOGTAG,"handleSetSettings");
+  ErrorType et = ESP_OK;
+  char buf[128];
+
+  int total_len = req->content_len;
+  int cur_len = 0;
+  int received = 0;
+  if (total_len >= sizeof(buf)) {
+    /* Respond with 500 Internal Server Error */
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "content too long");
+    return ESP_FAIL;
+  }
+  while (cur_len < total_len) {
+    received = httpd_req_recv(req, buf + cur_len, total_len);
+    if (received <= 0) {
+      /* Respond with 500 Internal Server Error */
+      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to post control value");
+      return ESP_FAIL;
+    }
+    cur_len += received;
+  }
+  buf[total_len] = '\0';
+
+  ESP_LOGI(LOGTAG,"before decode: %s", &buf[0]);
+  char decodeBuf[128];
+  urlDecode(&buf[0], &decodeBuf[0], sizeof(decodeBuf));
+  ESP_LOGI(LOGTAG,"after decode: %s", &decodeBuf[0]);
+  char Name[64] = {'\0'};
+  char strValue[16] = {'\0'};
+  int32_t value = 0;
+  if(ESP_OK==httpd_query_key_value(&decodeBuf[0],"name", &Name[0], sizeof(Name) )) {
+    if(ESP_OK==httpd_query_key_value(&decodeBuf[0],"value", &strValue[0], sizeof(strValue) )) {
+      value = atoi(&strValue[0]);
+      et = MyApp::get().getNVS().setValue(&Name[0], value);
+      if(!et.ok()) {
+        ESP_LOGI(LOGTAG,"failed to save setting %s with value %d", &Name[0], value);
+      }
+    } else {
+      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "value");
+    }
+  } else {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "name");
+  }
+
+  const char *pageData = "<html><head><title>Set Setting</title><meta http-equiv=\"refresh\" content=\"5;URL='/setting'\"/></head><body><p>Setting  Saved Successfully</p></body></html>";
+  httpd_resp_sendstr(req, pageData);
+  return et.getErrT();
+}
+
+esp_err_t WiFiMenu::handleGetSettings(httpd_req_t *req) {
+  cJSON *root = cJSON_CreateArray();
+  for(uint32_t i = 0;i<SettingArraySize;++i) {
+    int32_t value = SettingArrayDefault[i];
+    ErrorType et = MyApp::get().getNVS().getValue(SettingArray[i], value);
+    cJSON *sr = cJSON_CreateObject();
+    cJSON_AddStringToObject(sr, "name", SettingArray[0]);
+    cJSON_AddNumberToObject(sr, "value", value);
+    if(!et.ok()) {
+      ESP_LOGI(LOGTAG,"Issue loading settings: %d %s", et.getErrT(), et.toString());
+    }
+    cJSON_AddItemToArray(root,sr);
+  }
+  const char *info = cJSON_Print(root);
+  ESP_LOGI(LOGTAG, "%s", info);
+  httpd_resp_sendstr(req, info);
+  free((void *)info);
+  cJSON_Delete(root);
+  return ESP_OK;
+}
 
 esp_err_t WiFiMenu::handleRoot(httpd_req_t *req) {
   ESP_LOGI(LOGTAG, "HANDLE ROOT");
@@ -343,7 +428,7 @@ esp_err_t WiFiMenu::handleSetConData(httpd_req_t *req) {
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "invalid ID");
   }
 
-  const char *pageData = "<html><head><title>TZ Set</title><meta http-equiv=\"refresh\" content=\"5;URL='/'\"/></head><body><p>Connect Data  Saved Successfully</p></body></html>";
+  const char *pageData = "<html><head><title>TZ Set</title><meta http-equiv=\"refresh\" content=\"5;URL='/index.html'\"/></head><body><p>Connect Data  Saved Successfully</p></body></html>";
   httpd_resp_sendstr(req, pageData);
   return et.getErrT();
 }
@@ -546,6 +631,18 @@ const httpd_uri_t SetTZURI = {
   .handler   = http_handler,
   .user_ctx  = &SetTZCtx
 };
+const httpd_uri_t GetSettings = {
+  .uri       = "/settings",
+  .method    = HTTP_GET,
+  .handler   = http_handler,
+  .user_ctx  = &GetSettingsCtx
+};
+const httpd_uri_t SetSettings = {
+  .uri       = "/setsetting",
+  .method    = HTTP_POST,
+  .handler   = http_handler,
+  .user_ctx  = &SetSettingsCtx
+};
 static const httpd_uri_t root = {
   .uri       = "/",
   .method    = HTTP_GET,
@@ -582,6 +679,12 @@ ErrorType WiFiMenu::apStart() {
     else ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
     
     if(et.ok())  et = WebServer.registerHandle(SetTZURI);
+    else ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+    
+    if(et.ok())  et = WebServer.registerHandle(GetSettings);
+    else ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
+    
+    if(et.ok())  et = WebServer.registerHandle(SetSettings);
     else ESP_LOGI(LOGTAG,"registering handle: %d: %s", et.getErrT(), et.toString());
    
     if(et.ok())  et = WebServer.registerHandle(root);
