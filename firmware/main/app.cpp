@@ -18,6 +18,7 @@
 #include <device/touch/XPT2046.h>
 #include "menus/menu_state.h"
 #include "menus/calibration_menu.h"
+#include "menus/game_of_life.h"
 #include "menus/wifi_menu.h"
 #include "menus/setting_menu.h"
 #include <app/display_message_state.h>
@@ -456,6 +457,11 @@ libesp::GUI &MyApp::getGUI() {
 MenuState MyMenuState;
 libesp::DisplayMessageState DMS;
 SettingMenu MySettingMenu;
+GameOfLife GOL;
+
+GameOfLife *MyApp::getGameOfLife() {
+  return &GOL;
+}
 
 MenuState *MyApp::getMenuState() {
 	return &MyMenuState;

@@ -28,6 +28,7 @@ class CalibrationMenu;
 class MenuState;
 class WiFiMenu;
 class SettingMenu;
+class GameOfLife;
 
 enum ERRORS {
 	APP_OK = libesp::ErrorType::APP_OK
@@ -84,6 +85,7 @@ public:
 	MenuState *getMenuState();
   SettingMenu *getSettingMenu();
 	CalibrationMenu *getCalibrationMenu();
+  GameOfLife *getGameOfLife();
 	WiFiMenu *getWiFiMenu();
 	libesp::DisplayMessageState *getDisplayMessageState(libesp::BaseMenu *, const char *msg, uint32_t msDisplay);
 	libesp::XPT2046 &getTouch();

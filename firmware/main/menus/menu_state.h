@@ -7,7 +7,7 @@
 
 class MenuState: public AppBaseMenu {
 public:
-	static const int QUEUE_SIZE = 10;
+	static const int QUEUE_SIZE = 5;
 	static const int MSG_SIZE = sizeof(libesp::TouchNotification*);
 	MenuState();
 	virtual ~MenuState();

@@ -51,6 +51,11 @@ def post_tz():
 def get_settings():
   return json.dumps(settings)
 
+@api.route('/setsetting', methods=['POST'])
+def set_settings():
+  print(request.form)
+  return json.dumps(settings)
+
 if __name__ == '__main__':
     api.run()
 

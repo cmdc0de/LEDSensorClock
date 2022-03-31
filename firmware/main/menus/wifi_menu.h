@@ -77,6 +77,7 @@ protected:
   void setContentTypeFromFile(httpd_req_t *req, const char *filepath);
   libesp::ErrorType setWiFiConnectionData(const char *ssid, const char *pass);
   void setTZ();
+  esp_err_t readHttp(httpd_req_t *req, char *buf, uint32_t bufLen);
 private:
   libesp::WiFi MyWiFi;
   libesp::NTP NTPTime;

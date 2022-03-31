@@ -16,6 +16,7 @@
 #include <math/rectbbox.h>
 #include <net/webserver.h>
 #include <app/display_message_state.h>
+#include "game_of_life.h"
 
 using libesp::ErrorType;
 using libesp::BaseMenu;
@@ -30,13 +31,16 @@ const char *SettingMenu::LOGTAG = "SettingMenu";
 
 static const char *START_AP = "Start AP";
 static const char *STOP_AP = "Stop AP";
-static libesp::RectBBox2D StartAP(Point2Ds(45,25), 40, 15);
+static libesp::RectBBox2D StartAP(Point2Ds(45,35), 40, 15);
 static libesp::Button StartAPBtn(START_AP, uint16_t(0), &StartAP, RGBColor::BLUE, RGBColor::WHITE);
-static libesp::RectBBox2D CalBV(Point2Ds(145,25), 40, 15);
+static libesp::RectBBox2D CalBV(Point2Ds(145,35), 40, 15);
 static libesp::Button CalBtn((const char *)"Re-Calibrate", uint16_t(1), &CalBV, RGBColor::BLUE, RGBColor::WHITE);
 
-static const int8_t NUM_INTERFACE_ITEMS = 2;
-static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&StartAPBtn, &CalBtn};
+static libesp::RectBBox2D GameOfLifeBV(Point2Ds(45,80), 40, 15);
+static libesp::Button GOLBtn((const char *)"Game Of Life", uint16_t(2), &GameOfLifeBV, RGBColor::BLUE, RGBColor::WHITE);
+
+static const int8_t NUM_INTERFACE_ITEMS = 4;
+static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&StartAPBtn, &GOLBtn, &CalBtn, &MyApp::get().getCloseButton()};
 
 SettingMenu::SettingMenu() 
 	: AppBaseMenu(), TouchQueueHandle() 
@@ -98,6 +102,12 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
         MyApp::get().getWiFiMenu()->stopAP();
         nextState = MyApp::get().getCalibrationMenu();
         break;
+      case 2:
+        nextState = MyApp::get().getGameOfLife();
+        break;
+      case MyApp::CLOSE_BTN_ID:
+        nextState = MyApp::get().getMenuState();
+        break;
 		  }
 	  }
 	}
@@ -105,9 +115,9 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
   if(InternalState==AP_RUNNING) {
     char strBuf[128];
     snprintf(&strBuf[0], sizeof(strBuf), "AP Running: SSID = %s", WiFiMenu::WIFIAPSSID);
-    MyApp::get().getDisplay().drawString(10, 90, &strBuf[0]);
+    MyApp::get().getDisplay().drawString(10, 120, &strBuf[0]);
   } else {
-    MyApp::get().getDisplay().drawString(10, 90, "AP Stopped");
+    MyApp::get().getDisplay().drawString(10, 120, "AP Stopped");
   }
 
   MyLayout.draw(&MyApp::get().getDisplay());

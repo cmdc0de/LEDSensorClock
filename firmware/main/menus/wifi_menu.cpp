@@ -131,54 +131,66 @@ void WiFiMenu::setContentTypeFromFile(httpd_req_t *req, const char *filepath) {
   httpd_resp_set_type(req, type);
 }
 
-
-esp_err_t WiFiMenu::handleSetSettings(httpd_req_t *req) {
-  ESP_LOGI(LOGTAG,"handleSetSettings");
-  ErrorType et = ESP_OK;
-  char buf[128];
-
+esp_err_t WiFiMenu::readHttp(httpd_req_t *req, char *buf, uint32_t bufLen) {
   int total_len = req->content_len;
   int cur_len = 0;
   int received = 0;
-  if (total_len >= sizeof(buf)) {
-    /* Respond with 500 Internal Server Error */
-    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "content too long");
+  if (total_len >= bufLen) {
+    ESP_LOGE(LOGTAG,"content too long");
     return ESP_FAIL;
   }
   while (cur_len < total_len) {
     received = httpd_req_recv(req, buf + cur_len, total_len);
     if (received <= 0) {
-      /* Respond with 500 Internal Server Error */
-      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to post control value");
+      ESP_LOGE(LOGTAG,"Failed to post control value");
       return ESP_FAIL;
     }
     cur_len += received;
   }
   buf[total_len] = '\0';
+  return ESP_OK;
+}
 
-  ESP_LOGI(LOGTAG,"before decode: %s", &buf[0]);
-  char decodeBuf[128];
-  urlDecode(&buf[0], &decodeBuf[0], sizeof(decodeBuf));
-  ESP_LOGI(LOGTAG,"after decode: %s", &decodeBuf[0]);
-  char Name[64] = {'\0'};
-  char strValue[16] = {'\0'};
-  int32_t value = 0;
-  if(ESP_OK==httpd_query_key_value(&decodeBuf[0],"name", &Name[0], sizeof(Name) )) {
-    if(ESP_OK==httpd_query_key_value(&decodeBuf[0],"value", &strValue[0], sizeof(strValue) )) {
-      value = atoi(&strValue[0]);
-      et = MyApp::get().getNVS().setValue(&Name[0], value);
-      if(!et.ok()) {
-        ESP_LOGI(LOGTAG,"failed to save setting %s with value %d", &Name[0], value);
+esp_err_t WiFiMenu::handleSetSettings(httpd_req_t *req) {
+  ESP_LOGI(LOGTAG,"handleSetSettings");
+  ErrorType et = ESP_OK;
+  char buf[128];
+ 
+  et = readHttp(req, &buf[0], sizeof(buf));
+
+  if(et.ok()) {
+    ESP_LOGI(LOGTAG,"before decode: %s", &buf[0]);
+    char decodeBuf[128];
+    urlDecode(&buf[0], &decodeBuf[0], sizeof(decodeBuf));
+    ESP_LOGI(LOGTAG,"after decode: %s", &decodeBuf[0]);
+    char Name[64] = {'\0'};
+    char strValue[16] = {'\0'};
+    int32_t value = 0;
+    if(ESP_OK==httpd_query_key_value(&decodeBuf[0],"name", &Name[0], sizeof(Name) )) {
+      if(ESP_OK==httpd_query_key_value(&decodeBuf[0],"value", &strValue[0], sizeof(strValue) )) {
+        value = atoi(&strValue[0]);
+        for(int i=0;i<SettingArraySize;++i) {
+          if(!strcmp(&Name[0],SettingArray[i])) {
+            et = MyApp::get().getNVS().setValue(&Name[0], value);
+            if(et.ok()) {
+              static const char *pageData = "<html><head><title>Set Setting</title><meta http-equiv=\"refresh\" content=\"5;URL='/setting'\"/></head><body><p>Setting  Saved Successfully</p></body></html>";
+              httpd_resp_sendstr(req, pageData);
+            } else {
+              ESP_LOGI(LOGTAG,"failed to save setting %s with value %d", &Name[0], value);
+            }
+            break;
+          }
+        }
+      } else {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "value");
       }
     } else {
-      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "value");
+      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "name");
     }
   } else {
-    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "name");
+    /* Respond with 500 Internal Server Error */
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed read data");
   }
-
-  const char *pageData = "<html><head><title>Set Setting</title><meta http-equiv=\"refresh\" content=\"5;URL='/setting'\"/></head><body><p>Setting  Saved Successfully</p></body></html>";
-  httpd_resp_sendstr(req, pageData);
   return et.getErrT();
 }
 
@@ -391,45 +403,34 @@ esp_err_t WiFiMenu::handleSetConData(httpd_req_t *req) {
   ErrorType et = ESP_OK;
   char buf[128];
 
-  int total_len = req->content_len;
-  int cur_len = 0;
-  int received = 0;
-  if (total_len >= sizeof(buf)) {
-    /* Respond with 500 Internal Server Error */
-    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "content too long");
-    return ESP_FAIL;
-  }
-  while (cur_len < total_len) {
-    received = httpd_req_recv(req, buf + cur_len, total_len);
-    if (received <= 0) {
-      /* Respond with 500 Internal Server Error */
-      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to post control value");
-      return ESP_FAIL;
-    }
-    cur_len += received;
-  }
-  buf[total_len] = '\0';
+  et = readHttp(req, buf, sizeof(buf));
 
-  ESP_LOGI(LOGTAG,"before decode: %s", &buf[0]);
-  char decodeBuf[128];
-  urlDecode(&buf[0], &decodeBuf[0], sizeof(decodeBuf));
-  ESP_LOGI(LOGTAG,"after decode: %s", &decodeBuf[0]);
-  char idVal[8] = {'\0'};
-  int id = -1;
-  char pass[64] = {'\0'};
-  if(ESP_OK==httpd_query_key_value(&decodeBuf[0],"id", &idVal[0], sizeof(idVal) )) {
-    id = atoi(&idVal[0]);
-    if(ESP_OK==httpd_query_key_value(&decodeBuf[0],"password", &pass[0], sizeof(pass) )) {
-      et = setWiFiConnectionData(ScanResults[id].getSSID().c_str(), &pass[0]);
+  if(et.ok()) {
+    ESP_LOGI(LOGTAG,"before decode: %s", &buf[0]);
+    char decodeBuf[128];
+    urlDecode(&buf[0], &decodeBuf[0], sizeof(decodeBuf));
+    ESP_LOGI(LOGTAG,"after decode: %s", &decodeBuf[0]);
+    char idVal[8] = {'\0'};
+    int id = -1;
+    char pass[64] = {'\0'};
+    if((et=httpd_query_key_value(&decodeBuf[0],"id", &idVal[0], sizeof(idVal))).ok()) {
+      id = atoi(&idVal[0]);
+      if((et=httpd_query_key_value(&decodeBuf[0],"password", &pass[0], sizeof(pass))).ok()) {
+        et = setWiFiConnectionData(ScanResults[id].getSSID().c_str(), &pass[0]);
+        if(et.ok()) {
+          static const char *pageData = "<html><head><title>TZ Set</title><meta http-equiv=\"refresh\" content=\"5;URL='/index.html'\"/></head><body><p>Connect Data  Saved Successfully</p></body></html>";
+          httpd_resp_sendstr(req, pageData);
+        }
+      } else {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "invalid ID");
+      }
     } else {
       httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "invalid ID");
     }
   } else {
-    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "invalid ID");
+    /* Respond with 500 Internal Server Error */
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to read");
   }
-
-  const char *pageData = "<html><head><title>TZ Set</title><meta http-equiv=\"refresh\" content=\"5;URL='/index.html'\"/></head><body><p>Connect Data  Saved Successfully</p></body></html>";
-  httpd_resp_sendstr(req, pageData);
   return et.getErrT();
 }
 
@@ -477,41 +478,28 @@ esp_err_t WiFiMenu::handleSetTZ(httpd_req_t *req) {
   ESP_LOGI(LOGTAG,"handleSetTZ");
   ErrorType et = ESP_OK;
   char buf[128];
-  int total_len = req->content_len;
-  int cur_len = 0;
-  int received = 0;
-
-  if (total_len >= sizeof(buf)) {
-    /* Respond with 500 Internal Server Error */
-    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "content too long");
-    return ESP_FAIL;
-  }
-  while (cur_len < total_len) {
-    received = httpd_req_recv(req, buf + cur_len, total_len);
-    if (received <= 0) {
-      /* Respond with 500 Internal Server Error */
-      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to post control value");
-      return ESP_FAIL;
-    }
-    cur_len += received;
-  }
-  buf[total_len] = '\0';
-
-  ESP_LOGI(LOGTAG,"before decode: %s", &buf[0]);
-
-  cJSON *root = cJSON_Parse(&buf[0]);
-  int offset = cJSON_GetObjectItem(root,"offset")->valueint;
-  offset*=-1;//not sure why I have to do this??? AZ is UTC - 7 but must be set as UTC+7
-  sprintf(&TimeZone[0],"UTC%d",offset);
-  et = MyApp::get().getNVS().setValue(TZKEY, &TimeZone[0]);
-  cJSON_Delete(root);
-
+  
+  et = readHttp(req, buf, sizeof(buf));
   if(et.ok()) {
-    setTZ();
-    const char *pageData = "{result: 'ok'}";
-    httpd_resp_sendstr(req, pageData);
+    ESP_LOGI(LOGTAG,"Posted JSON: %s", &buf[0]);
+
+    cJSON *root = cJSON_Parse(&buf[0]);
+    int offset = cJSON_GetObjectItem(root,"offset")->valueint;
+    offset*=-1;//not sure why I have to do this??? AZ is UTC - 7 but must be set as UTC+7
+    sprintf(&TimeZone[0],"UTC%d",offset);
+    et = MyApp::get().getNVS().setValue(TZKEY, &TimeZone[0]);
+    cJSON_Delete(root);
+
+    if(et.ok()) {
+      setTZ();
+      static const char *pageData = "{result: 'ok'}";
+      httpd_resp_sendstr(req, pageData);
+    } else {
+      httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "failed to save TimeZone");
+    }
   } else {
-    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "failed to save TimeZone");
+    /* Respond with 500 Internal Server Error */
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to read");
   }
   return et.getErrT();
 }
