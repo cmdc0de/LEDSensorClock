@@ -29,6 +29,7 @@ class MenuState;
 class WiFiMenu;
 class SettingMenu;
 class GameOfLife;
+class Menu3D;
 
 enum ERRORS {
 	APP_OK = libesp::ErrorType::APP_OK
@@ -64,7 +65,7 @@ public:
 	static const int MSG_SIZE = sizeof(MyAppMsg*);
 	static const char *sYES;
 	static const char *sNO;
-  static const uint32_t TIME_BETWEEN_PULSES = 1000;
+  static const uint32_t TIME_BETWEEN_PULSES = 500;
   static const uint16_t DISPLAY_HEIGHT		= 240;
 	static const uint16_t DISPLAY_WIDTH			= 320;
 	//reminder ESP32 has 160KiB static and DRAM So a 1:1 buffer doesn't fit.
@@ -86,6 +87,7 @@ public:
   SettingMenu *getSettingMenu();
 	CalibrationMenu *getCalibrationMenu();
   GameOfLife *getGameOfLife();
+  Menu3D *getMenu3D();
 	WiFiMenu *getWiFiMenu();
 	libesp::DisplayMessageState *getDisplayMessageState(libesp::BaseMenu *, const char *msg, uint32_t msDisplay);
 	libesp::XPT2046 &getTouch();

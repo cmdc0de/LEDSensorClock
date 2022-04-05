@@ -21,6 +21,7 @@
 #include "menus/game_of_life.h"
 #include "menus/wifi_menu.h"
 #include "menus/setting_menu.h"
+#include "menus/menu3d.h"
 #include <app/display_message_state.h>
 #include "device/leds/apa102.h"
 #include "spibus.h"
@@ -330,6 +331,19 @@ static uint32_t SecondCount = 60;
 static uint32_t MinCount = 0;
 static uint16_t LightSensorCounter = 0;
 
+static uint8_t MinIndex[60] = 
+{
+   4, 5 ,6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,
+  34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59, 0, 1, 2, 3,  
+};
+
+static uint8_t SecIndex[60] = 
+{
+//   1,  2,  3,  4, 5, 6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+    64, 65, 66, 67,68,69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 
+    94, 95, 96, 97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119, 60, 61, 62, 63
+};
+
 ErrorType MyApp::onRun() {
   ErrorType et;
 	TouchTask.broadcast();
@@ -398,6 +412,71 @@ ErrorType MyApp::onRun() {
       break;
     case FOUR:
       {
+        time_t now = 0;
+        time(&now);
+        struct tm timeinfo;
+        memset(&timeinfo,0,sizeof(timeinfo));
+        localtime_r(&now, &timeinfo);
+        //timeinfo.tm_sec;
+        //timeinfo.tm_min;
+        //timeinfo.tm_hour;
+        for(int i=0;i<NumLEDs;++i) {
+          leds[i].setBrightness(0);
+        }
+        for(int i=0;i<60;++i) {
+          if(i<=timeinfo.tm_sec) {
+            leds[SecIndex[i]].setBrightness(8);
+            leds[SecIndex[i]].setGreen(32);
+            leds[SecIndex[i]].setRed(0);
+            leds[SecIndex[i]].setBlue(0);
+          } else {
+            leds[SecIndex[i]].setBrightness(0);
+          }
+          if(i<=timeinfo.tm_min) {
+            leds[MinIndex[i]].setBrightness(8);
+            leds[MinIndex[i]].setGreen(32);
+            leds[MinIndex[i]].setRed(0);
+            leds[MinIndex[i]].setBlue(0);
+          } else {
+            leds[MinIndex[i]].setBrightness(0);
+          }
+        }
+        switch(timeinfo.tm_hour) {
+          case 12:
+            {
+              for(int i=120;i<136;++i) {
+                leds[i].setBrightness(8);
+                leds[i].setGreen(32);
+                leds[i].setRed(0);
+                leds[i].setBlue(0);
+              }
+            }
+            break;
+          case 1:
+            {
+              for(int i=136;i<141;++i) {
+                leds[i].setBrightness(8);
+                leds[i].setGreen(32);
+                leds[i].setRed(0);
+                leds[i].setBlue(0);
+              }
+            }
+            break;
+          case 2:
+            {
+              for(int i=141;i<152;++i) {
+                leds[i].setBrightness(8);
+                leds[i].setGreen(32);
+                leds[i].setRed(0);
+                leds[i].setBlue(0);
+              }
+            }
+            break;
+
+        }
+
+
+        /*
         for(int i=0;i<NumLEDs;++i) {
           if(i>59 && i<=SecondCount) {
             leds[i].setBrightness(8);
@@ -417,6 +496,7 @@ ErrorType MyApp::onRun() {
           SecondCount = 60;
           MinCount++;
         }
+        */
         LedControl.init(NumLEDs, &leds[0]);
         LedControl.send();
       }
@@ -458,6 +538,12 @@ MenuState MyMenuState;
 libesp::DisplayMessageState DMS;
 SettingMenu MySettingMenu;
 GameOfLife GOL;
+Menu3D Menu3DRender( uint8_t(float(MyApp::FRAME_BUFFER_WIDTH)*0.8f)
+    , uint8_t(float(MyApp::FRAME_BUFFER_HEIGHT)*0.8f));
+
+Menu3D *MyApp::getMenu3D() {
+  return &Menu3DRender;
+}
 
 GameOfLife *MyApp::getGameOfLife() {
   return &GOL;

@@ -17,6 +17,7 @@
 #include <net/webserver.h>
 #include <app/display_message_state.h>
 #include "game_of_life.h"
+#include "menu3d.h"
 
 using libesp::ErrorType;
 using libesp::BaseMenu;
@@ -39,11 +40,14 @@ static libesp::Button CalBtn((const char *)"Re-Calibrate", uint16_t(1), &CalBV, 
 static libesp::RectBBox2D GameOfLifeBV(Point2Ds(45,80), 40, 15);
 static libesp::Button GOLBtn((const char *)"Game Of Life", uint16_t(2), &GameOfLifeBV, RGBColor::BLUE, RGBColor::WHITE);
 
-static const int8_t NUM_INTERFACE_ITEMS = 4;
-static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&StartAPBtn, &GOLBtn, &CalBtn, &MyApp::get().getCloseButton()};
+static libesp::RectBBox2D Menu3DBV(Point2Ds(145,80), 40, 15);
+static libesp::Button Menu3DBtn((const char *)"3D", uint16_t(3), &Menu3DBV, RGBColor::BLUE, RGBColor::WHITE);
 
-SettingMenu::SettingMenu() 
-	: AppBaseMenu(), TouchQueueHandle() 
+static const int8_t NUM_INTERFACE_ITEMS = 5;
+static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&StartAPBtn, &GOLBtn, &CalBtn
+  , &Menu3DBtn, &MyApp::get().getCloseButton()};
+
+SettingMenu::SettingMenu() : AppBaseMenu(), TouchQueueHandle() 
 	, MyLayout(&InterfaceElements[0],NUM_INTERFACE_ITEMS, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), false)
   , InternalState(INTERNAL_STATE::SHOW_ALL) {
 
@@ -104,6 +108,9 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
         break;
       case 2:
         nextState = MyApp::get().getGameOfLife();
+        break;
+      case 3:
+        nextState = MyApp::get().getMenu3D();
         break;
       case MyApp::CLOSE_BTN_ID:
         nextState = MyApp::get().getMenuState();

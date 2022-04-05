@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "device/display/display_device.h"
+#include <device/display/display_device.h>
 #include "3d/renderer.h"
 #include "menu3d.h"
 #include "menu_state.h"
@@ -14,144 +14,31 @@ using libesp::Vec3i;
 using libesp::Matrix;
 using libesp::Vec3f;
 
-/*
- * The model, view and projection matrices are three separate matrices. Model maps from an object's local coordinate
- * space into world space, view from world space to camera space, projection from camera to screen.
- *
- * https://en.wikipedia.org/wiki/Triangle_strip
- */
-/*
- *
- * #define VERTEX_COUNT 64
-#define EDGES_COUNT 108
-#define DEMENSIONS_SIZE 3
-#define EDGES_SIZE 2
-//free RAM need to draw it: 1112 bytes
-float model_vertex[VERTEX_COUNT][DEMENSIONS_SIZE] = {
-	{-0.247767,0.500000,1.208095},
-	{0.245151,0.500000,1.208095},
-	{-0.251254,-0.500268,-1.148982},
-	{-0.497713,-0.250268,-1.148982},
-	{-1.216684,0.500000,-0.587966},
-	{-1.216684,-0.500000,-0.587966},
-	{-2.715060,2.524469,1.465111},
-	{-2.715060,2.524469,-1.543829},
-	{-1.216684,0.500000,0.590483},
-	{-0.494226,1.000000,0.782811},
-	{0.491610,-0.250000,1.208095},
-	{0.491610,0.250000,1.208095},
-	{0.491610,1.000000,0.782812},
-	{-1.216684,-0.500000,0.590483},
-	{-0.497713,0.249732,-1.148982},
-	{2.700097,-2.516445,-1.533913},
-	{2.700096,0.004668,-1.945888},
-	{2.700096,-2.516445,1.475027},
-	{2.700096,0.004668,1.886542},
-	{1.176752,-0.500000,0.590483},
-	{2.702593,-0.342869,0.349148},
-	{0.241663,-0.500268,-1.148982},
-	{0.488122,-0.250268,-1.148982},
-	{2.700096,2.513917,-1.533913},
-	{-0.494225,1.000000,-0.781078},
-	{0.491611,1.000000,-0.781077},
-	{0.753795,1.000000,-0.499999},
-	{1.176752,-0.500000,-0.587966},
-	{-0.494225,0.250000,1.208095},
-	{-0.494225,-0.250000,1.208095},
-	{-0.251255,0.499732,-1.148982},
-	{0.241663,0.499732,-1.148982},
-	{0.753794,1.000000,0.500001},
-	{0.814407,-1.000000,0.500000},
-	{0.814407,-1.000000,-0.500000},
-	{2.700096,2.513917,1.475027},
-	{-2.719800,0.336161,-0.352381},
-	{-2.719800,-0.341941,-0.352382},
-	{-0.494225,-1.000000,0.782811},
-	{-0.247766,-0.500000,1.208095},
-	{2.702593,-0.342869,-0.337940},
-	{-0.494225,-1.000000,-0.781078},
-	{-0.813734,1.000000,-0.500000},
-	{-0.813734,1.000000,0.500000},
-	{-2.715060,0.015220,-1.955804},
-	{1.176752,0.500000,-0.587966},
-	{-2.715060,-2.505893,1.465111},
-	{-2.715060,-2.505893,-1.543829},
-	{1.176752,0.500000,0.590483},
-	{2.702593,0.335233,0.349149},
-	{-2.715060,0.015220,1.876626},
-	{0.491610,-1.000000,-0.781078},
-	{0.491610,-1.000000,0.782811},
-	{0.245151,-0.500000,1.208095},
-	{-0.813734,-1.000000,0.500000},
-	{-0.813734,-1.000000,-0.500000},
-	{-2.719800,0.336161,0.334707},
-	{-2.719800,-0.341941,0.334707},
-	{0.488122,0.249732,-1.148982},
-	{2.702593,0.335234,-0.337940},
-	{-0.275995,-0.735812,-0.987681},
-	{0.216922,-0.735812,-0.987681},
-	{-0.285291,-0.730416,-1.252644},
-	{0.207626,-0.730416,-1.252644},
-};
- *
- */
-#if 1
+static StaticQueue_t InternalQueue;
+static uint8_t InternalQueueBuffer[Menu3D::QUEUE_SIZE*Menu3D::MSG_SIZE] = {0};
+
 static const VertexStruct Cube[] = {
-	{	{	-.9, -.9, .9}, 	{0, 0, 0}, {0.0,0.0,0.0}},
-	{	{	.9, -.9, .9}, 	   {0, 0, 0}, {0.0,0.0,0.0}},
-	{	{	-.9, .9, .9}, 	   {0, 0, 0}, {0.0,0.0,0.0}},
-	{	{	.9, .9, .9}, 	   {0, 0, 0}, {0.0,0.0,0.0}},
-	{	{	-.9, -.9, -.9}, 	{0, 0, 0}, {0.0,0.0,0.0}},
-	{	{	.9, -.9, -.9}, 	{0, 0, 0}, {0.0,0.0,0.0}},
-	{	{	-.9, .9, -.9}, 	{0, 0, 0}, {0.0,0.0,0.0}},
-	{	{	.9, .9, -.9}, 	   {0, 0, 0}, {0.0,0.0,0.0}}
+	{	{	-.8, -.8, .8}, 	{0, 0, 0}, {0.0,0.0,0.0}},
+	{	{	.8, -.8, .8}, 	   {0, 0, 0}, {0.0,0.0,0.0}},
+	{	{	-.8, .8, .8}, 	   {0, 0, 0}, {0.0,0.0,0.0}},
+	{	{	.8, .8, .8}, 	   {0, 0, 0}, {0.0,0.0,0.0}},
+	{	{	-.8, -.8, -.8}, 	{0, 0, 0}, {0.0,0.0,0.0}},
+	{	{	.8, -.8, -.8}, 	{0, 0, 0}, {0.0,0.0,0.0}},
+	{	{	-.8, .8, -.8}, 	{0, 0, 0}, {0.0,0.0,0.0}},
+	{	{	.8, .8, -.8}, 	   {0, 0, 0}, {0.0,0.0,0.0}}
 };
 
 static const uint16_t CubeIndexes[] = {
 	0, 1, 2, 3, 7, 1, 5, 4, 7, 6, 2, 4, 0, 1
 };
-#else
 
-const struct VertexStruct Cube[] = {
-		/* CUBE: 24 vertices */
-		{ { 1.000000f, 1.000000f, -1.000000f }, { 255, 0, 0 } },
-		{ { 1.000000f, -1.000000f, -1.000000f }, { 0, 255, 0 } },
-		{ { -1.000000f, -1.000000f, -1.000000f }, { 0, 0, 255 } },
-		{ { -1.000000f, 1.000000f, -1.000000f }, { 0, 0, 255 } },
-		{ { 1.000000f, 0.999999f, 1.000000f }, { 0, 0, 255 } },
-		{ { -1.000000f, 1.000000f, 1.000000f }, { 0, 0, 255 } },
-		{ { -1.000000f, -1.000000f, 1.000000f }, { 0, 0, 255 } },
-		{ { 0.999999f, -1.000001f, 1.000000f }, { 0, 0, 255 } },
-		{ { 1.000000f, 1.000000f, -1.000000f }, { 0, 0, 255 } },
-		{ { 1.000000f, 0.999999f, 1.000000f }, { 0, 0, 255 } },
-		{ { 0.999999f, -1.000001f, 1.000000f }, { 0, 0, 255 } },
-		{ { 1.000000f, -1.000000f, -1.000000f }, { 0, 0, 255 } },
-		{ { 1.000000f, -1.000000f, -1.000000f }, { 0, 0, 255 } },
-		{ { 0.999999f, -1.000001f, 1.000000f }, { 0, 0, 255 } },
-		{ { -1.000000f, -1.000000f, 1.000000f }, { 0, 0, 255 } },
-		{ { -1.000000f, -1.000000f, -1.000000f }, { 0, 0, 255 } },
-		{ { -1.000000f, -1.000000f, -1.000000f }, { 0, 0, 255 } },
-		{ { -1.000000f, -1.000000f, 1.000000f }, { 0, 0, 255 } },
-		{ { -1.000000f, 1.000000f, 1.000000f }, { 0, 0, 255 } },
-		{ { -1.000000f, 1.000000f, -1.000000f }, { 0, 0, 255 } },
-		{ { 1.000000f, 0.999999f, 1.000000f }, { 0, 0, 255 } },
-		{ { 1.000000f, 1.000000f, -1.000000f }, { 0, 0, 255 } },
-		{ { -1.000000f, 1.000000f, -1.000000f }, { 0, 0, 255 } },
-		{ { -1.000000f, 1.000000f, 1.000000f }, { 0, 0, 255 } },
-};
-
-const unsigned short CubeIndexes[] = {
-		/* CUBE 12 faces */
-		0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21,
-		22, 20, 22, 23,
-};
-#endif
 
 const Vec3f Menu3D::center(0, 0, 0);
 const Vec3f Menu3D::up(0, 1, 0);
 
-Menu3D::Menu3D() : AppBaseMenu(),
-		model(), light_dir(), eye(), CanvasWidth(0), CanvasHeight(0) {
+Menu3D::Menu3D(uint8_t w, uint8_t h) : AppBaseMenu(),
+		model(), light_dir(), eye(), CanvasWidth(w), CanvasHeight(h) {
+	InternalQueueHandler = xQueueCreateStatic(QUEUE_SIZE,MSG_SIZE,&InternalQueueBuffer[0],&InternalQueue);
 }
 
 Menu3D::~Menu3D() {
@@ -161,14 +48,14 @@ Menu3D::~Menu3D() {
 enum INTERNAL_STATE {
 	INIT, RENDER
 };
+
 static INTERNAL_STATE InternalState = INIT;
 static float rotation = 0.0f;
 
 ErrorType Menu3D::onInit() {
-	//initGame();
 	InternalState = INIT;
-	model.set(&Cube[0], (sizeof(Cube) / sizeof(Cube[0])), &CubeIndexes[0], sizeof(CubeIndexes) / sizeof(CubeIndexes[0]),
-			Model::STRIPS);
+	model.set(&Cube[0], (sizeof(Cube) / sizeof(Cube[0])), &CubeIndexes[0]
+      , sizeof(CubeIndexes) / sizeof(CubeIndexes[0]), Model::STRIPS);
 	light_dir = Vec3f(1, 1, 1);
 	eye = Vec3f(0, 2, 40);
 	rotation = 0.0f;
@@ -176,19 +63,33 @@ ErrorType Menu3D::onInit() {
 }
 
 void Menu3D::initMenu3d() {
-	CanvasHeight = MyApp::get().getCanvasHeight()-15;
-	CanvasWidth = MyApp::get().getCanvasWidth()-30;
+  libesp::TouchNotification *pe = nullptr;
+	for(int i=0;i<2;i++) {
+		if(xQueueReceive(InternalQueueHandler, &pe, 0)) {
+			delete pe;
+		}
+	}
+	MyApp::get().getTouch().addObserver(InternalQueueHandler);
+
 	lookat(eye, center, up);
 	viewport((CanvasWidth / 8), (CanvasHeight / 8), CanvasWidth * 0.8, CanvasHeight * 0.8);
-	//viewport(18, 13, 82, 90);
 	projection(-1.f / (eye - center).norm());
 	light_dir.normalize();
-	//model.scale(.5);
+	model.scale(.75);
 	MyApp::get().getDisplay().fillScreen(RGBColor::BLACK);
 }
 
 BaseMenu::ReturnStateContext Menu3D::onRun() {
 	BaseMenu::ReturnStateContext sr(this);
+
+  libesp::TouchNotification *pe = nullptr;
+	bool penUp = false;
+	if(xQueueReceive(InternalQueueHandler, &pe, 0)) {
+		ESP_LOGI(LOGTAG,"que");
+		penUp = !pe->isPenDown();
+		delete pe;
+    if(penUp) return ReturnStateContext(MyApp::get().getMenuState());
+	}
 
 	switch (InternalState) {
 		case INIT:
@@ -204,6 +105,7 @@ BaseMenu::ReturnStateContext Menu3D::onRun() {
 }
 
 ErrorType Menu3D::onShutdown() {
+	MyApp::get().getTouch().removeObserver(InternalQueueHandler);
 	return ErrorType();
 }
 
