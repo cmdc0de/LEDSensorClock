@@ -12,6 +12,7 @@
 #include <system.h>
 #include <net/utilities.h>
 #include <time.h>
+#include "../config.h"
 
 using libesp::ErrorType;
 using libesp::BaseMenu;
@@ -31,7 +32,13 @@ const char *WiFiMenu::CLKNAME    = "My Sensor Clock";
 static etl::vector<libesp::WiFiAPRecord,16> ScanResults;
 static const uint32_t FILE_PATH_MAX = 128;
 
-static const char *SettingArray[] = {"SecondsOnMainScreen", "SecondsInGameOfLife", "SecondsIn3D", "SecondsShowingDrawings"};
+static const char *SettingArray[] = {
+  "SecondsOnMainScreen"
+    , "SecondsInGameOfLife"
+    , "SecondsIn3D"
+    , "SecondsShowingDrawings"
+
+};
 static const int SettingArrayDefault[] = {300,300,300,120};
 static const uint32_t SettingArraySize = (sizeof(SettingArray)/sizeof(SettingArray[0]));
 
@@ -168,18 +175,12 @@ esp_err_t WiFiMenu::handleSetSettings(httpd_req_t *req) {
     int32_t value = 0;
     if(ESP_OK==httpd_query_key_value(&decodeBuf[0],"name", &Name[0], sizeof(Name) )) {
       if(ESP_OK==httpd_query_key_value(&decodeBuf[0],"value", &strValue[0], sizeof(strValue) )) {
-        value = atoi(&strValue[0]);
-        for(int i=0;i<SettingArraySize;++i) {
-          if(!strcmp(&Name[0],SettingArray[i])) {
-            et = MyApp::get().getNVS().setValue(&Name[0], value);
-            if(et.ok()) {
-              static const char *pageData = "<html><head><title>Set Setting</title><meta http-equiv=\"refresh\" content=\"5;URL='/setting'\"/></head><body><p>Setting  Saved Successfully</p></body></html>";
-              httpd_resp_sendstr(req, pageData);
-            } else {
-              ESP_LOGI(LOGTAG,"failed to save setting %s with value %d", &Name[0], value);
-            }
-            break;
-          }
+        et = MyApp::get().getConfig().setSetting(&Name[0],&strValue[0]);
+        if(et.ok()) {
+          static const char *pageData = "<html><head><title>Set Setting</title><meta http-equiv=\"refresh\" content=\"5;URL='/setting'\"/></head><body><p>Setting  Saved Successfully</p></body></html>";
+          httpd_resp_sendstr(req, pageData);
+        } else {
+          ESP_LOGI(LOGTAG,"failed to save setting %s with value %d", &Name[0], value);
         }
       } else {
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "value");
@@ -196,17 +197,8 @@ esp_err_t WiFiMenu::handleSetSettings(httpd_req_t *req) {
 
 esp_err_t WiFiMenu::handleGetSettings(httpd_req_t *req) {
   cJSON *root = cJSON_CreateArray();
-  for(uint32_t i = 0;i<SettingArraySize;++i) {
-    int32_t value = SettingArrayDefault[i];
-    ErrorType et = MyApp::get().getNVS().getValue(SettingArray[i], value);
-    cJSON *sr = cJSON_CreateObject();
-    cJSON_AddStringToObject(sr, "name", SettingArray[0]);
-    cJSON_AddNumberToObject(sr, "value", value);
-    if(!et.ok()) {
-      ESP_LOGI(LOGTAG,"Issue loading settings: %d %s", et.getErrT(), et.toString());
-    }
-    cJSON_AddItemToArray(root,sr);
-  }
+  MyApp::get().getConfig().getAllSettings(root);
+  
   const char *info = cJSON_Print(root);
   ESP_LOGI(LOGTAG, "%s", info);
   httpd_resp_sendstr(req, info);

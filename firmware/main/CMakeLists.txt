@@ -1,4 +1,5 @@
 set(srcs "./app.cpp"
+	"./config.cpp"
 	"./ledclocksensor.cpp"
   "./dht22task.cpp"
   "./mhz19btask.cpp"

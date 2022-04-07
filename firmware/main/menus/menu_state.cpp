@@ -80,7 +80,11 @@ libesp::BaseMenu::ReturnStateContext MenuState::onRun() {
 	}
 
   char buf[32];
-  sprintf(&buf[0],"%2.1f",MyApp::get().getTemp());
+  float f = MyApp::get().getTemp();
+  if(MyApp::get().getConfig().wantC()) {
+    f = ((f*9.0f)/5.0f) + 32;
+  }
+  sprintf(&buf[0],"%2.1f",f);
   TempLabel.setDisplayText(&buf[0]);
   sprintf(&buf[0],"%2.1f",MyApp::get().getHumidity());
   HumLabel.setDisplayText(&buf[0]);

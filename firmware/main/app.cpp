@@ -51,7 +51,6 @@ using libesp::Point2Ds;
 const char *MyApp::LOGTAG = "AppTask";
 const char *MyApp::sYES = "Yes";
 const char *MyApp::sNO = "No";
-//const uint16_t MyApp::CLOSE_BTN_ID = 1000;
 
 #define START_ROT libesp::DisplayILI9341::LANDSCAPE_TOP_LEFT
 static const uint16_t PARALLEL_LINES = 1;
@@ -90,7 +89,8 @@ MyApp &MyApp::get() {
 
 MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) ,DHT22T()
                  , InternalQueueHandler(0), Temperature(0.0f), Humidity(0.0f), MHZ19T(), CO2(0)
-                 , NVSStorage("appdata","data",false), LSensorResult(), DisplayTouchSemaphore(nullptr) {
+                 , NVSStorage("appdata","data",false), LSensorResult(), DisplayTouchSemaphore(nullptr)
+                 , ConfigStore(&NVSStorage) {
 	ErrorType::setAppDetail(&AppErrors);
 }
 
@@ -152,6 +152,12 @@ libesp::ErrorType MyApp::onInit() {
 	ErrorType et;
 
 	InternalQueueHandler = xQueueCreateStatic(QUEUE_SIZE,MSG_SIZE,&InternalQueueBuffer[0],&InternalQueue);
+
+	ESP_LOGI(LOGTAG,"OnInit: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
+  et = getConfig().init();
+  if(!et.ok()) {
+    ESP_LOGE(LOGTAG,"Failed to init config: %d %s", et.getErrT(), et.toString());
+  }
 
 	ESP_LOGI(LOGTAG,"OnInit: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
@@ -327,8 +333,6 @@ void MyApp::handleMessages() {
   }
 }
 
-static uint32_t SecondCount = 60;
-static uint32_t MinCount = 0;
 static uint16_t LightSensorCounter = 0;
 
 static uint8_t MinIndex[60] = 
@@ -364,7 +368,7 @@ ErrorType MyApp::onRun() {
   if(timeSinceLast>=TIME_BETWEEN_PULSES) {
     LastTime = FreeRTOS::getTimeSinceStart();
 
-    if(++LightSensorCounter>3) {
+    if(++LightSensorCounter>5) {
       LightSensor.acquireData(LSensorResult);
       LightSensorCounter=0;
     }
@@ -417,86 +421,158 @@ ErrorType MyApp::onRun() {
         struct tm timeinfo;
         memset(&timeinfo,0,sizeof(timeinfo));
         localtime_r(&now, &timeinfo);
-        //timeinfo.tm_sec;
-        //timeinfo.tm_min;
-        //timeinfo.tm_hour;
+
         for(int i=0;i<NumLEDs;++i) {
           leds[i].setBrightness(0);
         }
+        libesp::RGBColor secColorS = getConfig().getSecondHandStartColor();
+        libesp::RGBColor secColorE = getConfig().getSecondHandEndColor();
+        libesp::RGBColor minColorS = getConfig().getMinHandStartColor();
+        libesp::RGBColor minColorE = getConfig().getMinHandEndColor();
+        libesp::RGBColor hrColorS = getConfig().getHourStartColor();
+        libesp::RGBColor hrColorE = getConfig().getHourEndColor();
         for(int i=0;i<60;++i) {
           if(i<=timeinfo.tm_sec) {
             leds[SecIndex[i]].setBrightness(8);
-            leds[SecIndex[i]].setGreen(32);
-            leds[SecIndex[i]].setRed(0);
-            leds[SecIndex[i]].setBlue(0);
+            leds[SecIndex[i]].setGreen(secColorS.getG());
+            leds[SecIndex[i]].setRed(secColorS.getR());
+            leds[SecIndex[i]].setBlue(secColorS.getB());
           } else {
             leds[SecIndex[i]].setBrightness(0);
           }
           if(i<=timeinfo.tm_min) {
             leds[MinIndex[i]].setBrightness(8);
-            leds[MinIndex[i]].setGreen(32);
-            leds[MinIndex[i]].setRed(0);
-            leds[MinIndex[i]].setBlue(0);
+            leds[MinIndex[i]].setGreen(minColorS.getG());
+            leds[MinIndex[i]].setRed(minColorS.getR());
+            leds[MinIndex[i]].setBlue(minColorS.getB());
           } else {
             leds[MinIndex[i]].setBrightness(0);
           }
         }
         switch(timeinfo.tm_hour) {
-          case 12:
+          case 0: case 12:
             {
               for(int i=120;i<136;++i) {
                 leds[i].setBrightness(8);
-                leds[i].setGreen(32);
-                leds[i].setRed(0);
-                leds[i].setBlue(0);
+                leds[i].setGreen(hrColorS.getG());
+                leds[i].setRed(hrColorS.getR());
+                leds[i].setBlue(hrColorS.getB());
               }
             }
             break;
-          case 1:
+          case 1: case 13:
             {
               for(int i=136;i<141;++i) {
                 leds[i].setBrightness(8);
-                leds[i].setGreen(32);
-                leds[i].setRed(0);
-                leds[i].setBlue(0);
+                leds[i].setGreen(hrColorS.getG());
+                leds[i].setRed(hrColorS.getR());
+                leds[i].setBlue(hrColorS.getB());
               }
             }
             break;
-          case 2:
+          case 2: case 14:
             {
               for(int i=141;i<152;++i) {
                 leds[i].setBrightness(8);
-                leds[i].setGreen(32);
-                leds[i].setRed(0);
-                leds[i].setBlue(0);
+                leds[i].setGreen(hrColorS.getG());
+                leds[i].setRed(hrColorS.getR());
+                leds[i].setBlue(hrColorS.getB());
+              }
+            }
+            break;
+          case 3: case 15:
+            {
+              for(int i=152;i<162;++i) {
+                leds[i].setBrightness(8);
+                leds[i].setGreen(hrColorS.getG());
+                leds[i].setRed(hrColorS.getR());
+                leds[i].setBlue(hrColorS.getB());
+              }
+            }
+            break;
+          case 4: case 16:
+            {
+              for(int i=162;i<170;++i) {
+                leds[i].setBrightness(8);
+                leds[i].setGreen(hrColorS.getG());
+                leds[i].setRed(hrColorS.getR());
+                leds[i].setBlue(hrColorS.getB());
+              }
+            }
+            break;
+          case 5: case 17:
+            {
+              for(int i=170;i<181;++i) {
+                leds[i].setBrightness(8);
+                leds[i].setGreen(hrColorS.getG());
+                leds[i].setRed(hrColorS.getR());
+                leds[i].setBlue(hrColorS.getB());
+              }
+            }
+            break;
+          case 6: case 18:
+            {
+              for(int i=181;i<193;++i) {
+                leds[i].setBrightness(8);
+                leds[i].setGreen(hrColorS.getG());
+                leds[i].setRed(hrColorS.getR());
+                leds[i].setBlue(hrColorS.getB());
+              }
+            }
+            break;
+          case 7: case 19:
+            {
+              for(int i=193;i<200;++i) {
+                leds[i].setBrightness(8);
+                leds[i].setGreen(hrColorS.getG());
+                leds[i].setRed(hrColorS.getR());
+                leds[i].setBlue(hrColorS.getB());
+              }
+            }
+            break;
+          case 8: case 20:
+            {
+              for(int i=200;i<213;++i) {
+                leds[i].setBrightness(8);
+                leds[i].setGreen(hrColorS.getG());
+                leds[i].setRed(hrColorS.getR());
+                leds[i].setBlue(hrColorS.getB());
+              }
+            }
+            break;
+          case 9: case 21:
+            {
+              for(int i=213;i<223;++i) {
+                leds[i].setBrightness(8);
+                leds[i].setGreen(hrColorS.getG());
+                leds[i].setRed(hrColorS.getR());
+                leds[i].setBlue(hrColorS.getB());
+              }
+            }
+            break;
+          case 10: case 22:
+            {
+              for(int i=223;i<240;++i) {
+                leds[i].setBrightness(8);
+                leds[i].setGreen(hrColorS.getG());
+                leds[i].setRed(hrColorS.getR());
+                leds[i].setBlue(hrColorS.getB());
+              }
+            }
+            break;
+          case 11: case 23:
+            {
+              for(int i=240;i<250;++i) {
+                leds[i].setBrightness(8);
+                leds[i].setGreen(hrColorS.getG());
+                leds[i].setRed(hrColorS.getR());
+                leds[i].setBlue(hrColorS.getB());
               }
             }
             break;
 
         }
 
-
-        /*
-        for(int i=0;i<NumLEDs;++i) {
-          if(i>59 && i<=SecondCount) {
-            leds[i].setBrightness(8);
-            leds[i].setGreen(32);
-            leds[i].setRed(0);
-            leds[i].setBlue(0);
-          } else if(i<=MinCount) {
-            leds[i].setBrightness(8);
-            leds[i].setGreen(0);
-            leds[i].setRed(0);
-            leds[i].setBlue(64);
-          } else {
-            leds[i].setBrightness(0);
-          }
-        }
-        if(++SecondCount>119) {
-          SecondCount = 60;
-          MinCount++;
-        }
-        */
         LedControl.init(NumLEDs, &leds[0]);
         LedControl.send();
       }

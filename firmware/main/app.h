@@ -16,6 +16,7 @@
 #include <adc.h>
 #include <freertos.h>
 #include <device/display/layout.h>
+#include "config.h"
 
 namespace libesp {
 class GUI;
@@ -65,7 +66,7 @@ public:
 	static const int MSG_SIZE = sizeof(MyAppMsg*);
 	static const char *sYES;
 	static const char *sNO;
-  static const uint32_t TIME_BETWEEN_PULSES = 500;
+  static const uint32_t TIME_BETWEEN_PULSES = 250;
   static const uint16_t DISPLAY_HEIGHT		= 240;
 	static const uint16_t DISPLAY_WIDTH			= 320;
 	//reminder ESP32 has 160KiB static and DRAM So a 1:1 buffer doesn't fit.
@@ -103,6 +104,7 @@ public:
   uint32_t getLightSensorRaw() { return LSensorResult.RawAvg;}
   uint32_t getLightCalcVoltage() { return LSensorResult.CalculatedVoltage;}
   libesp::Button &getCloseButton();
+  Config &getConfig() {return ConfigStore;}
   libesp::ErrorType initFS();
 protected:
 	MyApp();
@@ -122,6 +124,7 @@ private:
   libesp::NVS NVSStorage;
   libesp::ADC::Result LSensorResult;
   SemaphoreHandle_t DisplayTouchSemaphore;
+  Config ConfigStore;
 private:
 	static MyApp mSelf;
 };
