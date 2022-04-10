@@ -81,7 +81,7 @@ libesp::BaseMenu::ReturnStateContext MenuState::onRun() {
 
   char buf[32];
   float f = MyApp::get().getTemp();
-  if(MyApp::get().getConfig().wantC()) {
+  if(!MyApp::get().getConfig().wantC()) {
     f = ((f*9.0f)/5.0f) + 32;
   }
   sprintf(&buf[0],"%2.1f",f);

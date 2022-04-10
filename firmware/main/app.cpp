@@ -376,10 +376,12 @@ ErrorType MyApp::onRun() {
     //calculate Brightness based on light sensor
     uint8_t maxBrightness = getConfig().getMaxBrightness();
     uint32_t lightValue = getLightCalcVoltage();
-    if(lightValue>1000 && lightValue<2000) {
+    if(lightValue>=1000 && lightValue<2000) {
       maxBrightness/=2;
-    } else if(lightValue>2000) {
+    } else if(lightValue>=2000 && lightValue<3000) {
       maxBrightness/=3;
+    } else if(lightValue>=3000) {
+      maxBrightness/=4;
     }
     maxBrightness=maxBrightness<4?4:maxBrightness;
 
@@ -434,6 +436,9 @@ ErrorType MyApp::onRun() {
 
         for(int i=0;i<NumLEDs;++i) {
           leds[i].setBrightness(0);
+          leds[i].setGreen(0);
+          leds[i].setRed(0);
+          leds[i].setBlue(0);
         }
         libesp::RGBColor secColorS = getConfig().getSecondHandStartColor();
         libesp::RGBColor secColorE = getConfig().getSecondHandEndColor();
@@ -464,9 +469,9 @@ ErrorType MyApp::onRun() {
           }
         }
         float hrBAdjust = float(timeinfo.tm_min)/60.0f;
-        hrBAdjust = hrBAdjust<1.0f?1.0f:hrBAdjust;
         float invHrBAdjust = 1.0f-hrBAdjust;
         uint8_t currentHrBright = uint8_t(invHrBAdjust*float(maxBrightness));
+        currentHrBright = currentHrBright<4?4:currentHrBright;
         uint8_t nextHrBright = uint8_t(hrBAdjust*float(maxBrightness));
         libesp::RGBColor hrColorS = getConfig().getHourStartColor();
         libesp::RGBColor hrColorE = getConfig().getHourEndColor();
@@ -481,6 +486,7 @@ ErrorType MyApp::onRun() {
         uint8_t nextHrB = hrColorS.getB()+uint8_t(bShiftHr*float(60-timeinfo.tm_min));
         uint8_t startLED=0, endLED=0, endCurrentHourLED=0;
         bool bCommon = true;
+        //ESP_LOGI(LOGTAG,"tm_hour %d", timeinfo.tm_hour);
         switch(timeinfo.tm_hour) {
           case 0: case 12:
             startLED = 120;
@@ -533,12 +539,13 @@ ErrorType MyApp::onRun() {
             endCurrentHourLED = 223;
             break;
           case 10: case 22:
-            startLED = 213;
+            startLED = 223;
             endLED = 250;
             endCurrentHourLED = 240;
             break;
           case 11: case 23:
             {
+              //ESP_LOGI(LOGTAG,"case 11/23");
               bCommon = false;
               for(int i=240;i<250;++i) {
                 leds[i].setBrightness(currentHrBright);
@@ -546,7 +553,7 @@ ErrorType MyApp::onRun() {
                 leds[i].setRed(currentHrR);
                 leds[i].setBlue(currentHrB);
               }
-              for(int i=120;i<141;++i) {
+              for(int i=120;i<136;++i) {
                 leds[i].setBrightness(nextHrBright);
                 leds[i].setGreen(nextHrG);
                 leds[i].setRed(nextHrR);
@@ -555,17 +562,20 @@ ErrorType MyApp::onRun() {
             }
             break;
         }
-        for(int i=startLED;i<endLED&&bCommon;++i) {
-          if(i<endCurrentHourLED) { 
-            leds[i].setBrightness(currentHrBright);
-            leds[i].setGreen(currentHrG);
-            leds[i].setRed(currentHrR);
-            leds[i].setBlue(currentHrB);
-          } else {
-            leds[i].setBrightness(nextHrBright);
-            leds[i].setGreen(nextHrG);
-            leds[i].setRed(nextHrR);
-            leds[i].setBlue(nextHrB);
+        if(bCommon) {
+          //ESP_LOGI(LOGTAG,"cBright %d - nBright %d", currentHrBright, nextHrBright);
+          for(int i=startLED;i<endLED;++i) {
+            if(i<endCurrentHourLED) { 
+              leds[i].setBrightness(currentHrBright);
+              leds[i].setGreen(currentHrG);
+              leds[i].setRed(currentHrR);
+              leds[i].setBlue(currentHrB);
+            } else {
+              leds[i].setBrightness(nextHrBright);
+              leds[i].setGreen(nextHrG);
+              leds[i].setRed(nextHrR);
+              leds[i].setBlue(nextHrB);
+            }
           }
         }
 
