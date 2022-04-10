@@ -16,6 +16,7 @@ const char *Config::MIN_START_COLOR = "MinStartColor";
 const char *Config::MIN_END_COLOR = "MinEndColor";
 const char *Config::HOUR_START_COLOR = "HourStartColor";
 const char *Config::HOUR_END_COLOR = "HourEndColor";
+const char *Config::MAX_BRIGHTNESS = "MaxBrightness";
 const char *Config::LOGTAG = "Config";
 
 Config::Config(libesp::NVS *nvs): SettingMap(), NVSStorage(nvs) {
@@ -50,6 +51,8 @@ ErrorType Config::init() {
   SettingMap.insert(SettingMap.end(), ETL_OR_STD::make_pair(HOUR_START_COLOR, p));
   p = new ConfigItem(ConfigItem::UINT, 0xFF0000);
   SettingMap.insert(SettingMap.end(), ETL_OR_STD::make_pair(HOUR_END_COLOR, p));
+  p = new ConfigItem(ConfigItem::PERCENT, 50);
+  SettingMap.insert(SettingMap.end(), ETL_OR_STD::make_pair(MAX_BRIGHTNESS, p));
 
   SettingMapTypeIT it = SettingMap.begin();
   while(it!=SettingMap.end()) {
@@ -69,6 +72,7 @@ ErrorType Config::init() {
         break;
       case ConfigItem::UINT:
       case ConfigItem::COLOR:
+      case ConfigItem::PERCENT:
         {
           et = NVSStorage->getValue((*it).first,(*it).second->Value.UIntValue);
           ESP_LOGI(LOGTAG,"RetVal: %d Loaded Value - Name: %s Value: %u", et.getErrT(), (*it).first, (*it).second->Value.UIntValue);
@@ -95,6 +99,10 @@ uint32_t Config::getSecondsOnGameOfLife() {
 
 uint32_t Config::getSecondsOn3D() {
   return SettingMap[SECONDS_ON_3D]->Value.UIntValue;
+}
+
+uint8_t Config::getMaxBrightness() {
+  return SettingMap[MAX_BRIGHTNESS]->Value.UIntValue;
 }
 
 libesp::RGBColor Config::getSecondHandStartColor() {
@@ -147,6 +155,7 @@ libesp::ErrorType Config::getAllSettings(cJSON *r) {
         break;
       case ConfigItem::UINT:
       case ConfigItem::COLOR:
+      case ConfigItem::PERCENT:
         {
           cJSON_AddStringToObject(sr, "name", (*it).first);
           cJSON_AddNumberToObject(sr, "value", (*it).second->Value.UIntValue);
@@ -178,6 +187,13 @@ libesp::ErrorType Config::setSetting(const char *name, const char *value) {
       case ConfigItem::COLOR:
         {
           uint32_t v = strtoul(value, 0L, 10);
+          et = NVSStorage->setValue(name,v);
+        }
+        break;
+      case ConfigItem::PERCENT:
+        {
+          uint32_t v = strtoul(value, 0L, 10);
+          v = v>100?100:v;
           et = NVSStorage->setValue(name,v);
         }
         break;

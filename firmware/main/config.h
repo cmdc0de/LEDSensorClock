@@ -13,6 +13,7 @@ struct ConfigItem {
       , INT
       , UINT
       , COLOR
+      , PERCENT
   };
   ConfigItem::TYPE ItemType;
   union {
@@ -44,6 +45,7 @@ class Config {
     static const char *MIN_END_COLOR;
     static const char *HOUR_START_COLOR;
     static const char *HOUR_END_COLOR;
+    static const char *MAX_BRIGHTNESS;
     static const char *LOGTAG;
   public:
     Config(libesp::NVS *nvs);
@@ -61,6 +63,7 @@ class Config {
     libesp::RGBColor getMinHandEndColor();
     libesp::RGBColor getHourStartColor();
     libesp::RGBColor getHourEndColor();
+    uint8_t getMaxBrightness();
   private:
     typedef etl::map<const char *, ConfigItem *, 12> SettingMapType;
     typedef SettingMapType::iterator SettingMapTypeIT;
