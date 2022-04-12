@@ -103,7 +103,7 @@ libesp::BaseMenu::ReturnStateContext MenuState::onRun() {
   memset(&timeinfo,0,sizeof(timeinfo));
   localtime_r(&now, &timeinfo);
   strftime(buf, sizeof(buf), "%c", &timeinfo);
-  MyApp::get().getDisplay().drawString(3,70,&buf[0],libesp::RGBColor::WHITE);
+  MyApp::get().getDisplay().drawString(3,70,&buf[0],(MyApp::get().wasMotion()?libesp::RGBColor::BLUE:libesp::RGBColor::WHITE));
 
 	if(widgetHit) {
 		ESP_LOGI(LOGTAG, "Widget %s hit\n", widgetHit->getName());

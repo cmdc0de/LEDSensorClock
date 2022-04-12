@@ -90,7 +90,7 @@ MyApp &MyApp::get() {
 MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) ,DHT22T()
                  , InternalQueueHandler(0), Temperature(0.0f), Humidity(0.0f), MHZ19T(), CO2(0)
                  , NVSStorage("appdata","data",false), LSensorResult(), DisplayTouchSemaphore(nullptr)
-                 , ConfigStore(&NVSStorage) {
+                 , ConfigStore(&NVSStorage), LastConnectCheck(0) {
 	ErrorType::setAppDetail(&AppErrors);
 }
 
@@ -145,7 +145,34 @@ ErrorType MyApp::initFS() {
     return ESP_OK;
 }
 
+uint32_t LastMotionDetect = 0;
 
+static void gpio_isr_handler(void* arg) {
+  LastMotionDetect = FreeRTOS::getTimeSinceStart();
+  printf("motion");
+}
+
+bool MyApp::wasMotion() {
+  return ((FreeRTOS::getTimeSinceStart()-LastMotionDetect)<TIME_MOTION_DETECT);
+}
+
+libesp::ErrorType MyApp::initMotionSensor() {
+	gpio_config_t io_conf;
+  memset(&io_conf,0,sizeof(io_conf));
+	//interrupt of rising edge
+	io_conf.intr_type = GPIO_INTR_POSEDGE;
+	io_conf.pin_bit_mask = (1ULL << PIN_NUM_IR_OUTPUT_IRQ);
+	//set as input mode    
+	io_conf.mode = GPIO_MODE_INPUT;
+	//enable pull-up mode
+	io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+	io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+	gpio_config(&io_conf);
+	//start gpio task
+	gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+	//hook isr handler for specific gpio pin
+	return gpio_isr_handler_add(PIN_NUM_IR_OUTPUT_IRQ, gpio_isr_handler, (void*) (1ULL << PIN_NUM_IR_OUTPUT_IRQ));
+}
 
 
 libesp::ErrorType MyApp::onInit() {
@@ -287,17 +314,15 @@ libesp::ErrorType MyApp::onInit() {
     MHZ19T.start();
   }
 
-  if(et.ok()) {
-    for(int i=0;i<NumLEDs;++i) {
-      leds[i].setBlue(255);
-      leds[i].setBrightness(16);
-    }
-    LedControl.init(NumLEDs, &leds[0]);
-    LedControl.send();
-    ESP_LOGI(LOGTAG,"OnInit:After Send: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
+#define USE_MOTION_SENSOR
+#ifdef  USE_MOTION_SENSOR
+  et = initMotionSensor();
+  if(!et.ok()) {
+    ESP_LOGI(LOGTAG,"failed to start motion sensor");
   } else {
-    ESP_LOGI(LOGTAG,"failed initDevice");
+    ESP_LOGI(LOGTAG,"motion sensor started");
   }
+#endif
 
   et = MyWiFiMenu.initWiFi();
   if(et.ok()) {
@@ -365,6 +390,15 @@ ErrorType MyApp::onRun() {
 	} 
 
   uint32_t timeSinceLast = FreeRTOS::getTimeSinceStart()-LastTime;
+  uint32_t connectCheckTime = FreeRTOS::getTimeSinceStart()-LastConnectCheck;
+  if(connectCheckTime > TIME_BETWEEN_WIFI_CONNECTS) {
+    LastConnectCheck = FreeRTOS::getTimeSinceStart();
+    if(!MyWiFiMenu.isConnected()) {
+      ESP_LOGI(LOGTAG,"WifI not connected...reconnecting...");
+      MyWiFiMenu.connect();
+    }
+  }
+
   if(timeSinceLast>=TIME_BETWEEN_PULSES) {
     LastTime = FreeRTOS::getTimeSinceStart();
 
@@ -377,11 +411,11 @@ ErrorType MyApp::onRun() {
     uint8_t maxBrightness = getConfig().getMaxBrightness();
     uint32_t lightValue = getLightCalcVoltage();
     if(lightValue>=1000 && lightValue<2000) {
-      maxBrightness/=2;
+      maxBrightness*=0.75f;
     } else if(lightValue>=2000 && lightValue<3000) {
-      maxBrightness/=3;
+      maxBrightness*=0.5f;
     } else if(lightValue>=3000) {
-      maxBrightness/=4;
+      maxBrightness*=0.33f;
     }
     maxBrightness=maxBrightness<4?4:maxBrightness;
 

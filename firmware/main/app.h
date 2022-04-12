@@ -66,14 +66,16 @@ public:
 	static const int MSG_SIZE = sizeof(MyAppMsg*);
 	static const char *sYES;
 	static const char *sNO;
-  static const uint32_t TIME_BETWEEN_PULSES = 250;
+  static const uint32_t TIME_BETWEEN_PULSES = 200;
+  static const uint32_t TIME_BETWEEN_WIFI_CONNECTS = 60000;
   static const uint16_t DISPLAY_HEIGHT		= 240;
 	static const uint16_t DISPLAY_WIDTH			= 320;
 	//reminder ESP32 has 160KiB static and DRAM So a 1:1 buffer doesn't fit.
 	static const uint16_t FRAME_BUFFER_HEIGHT	= 144;
 	static const uint16_t FRAME_BUFFER_WIDTH	= 192;
-
-  static const uint32_t CLOSE_BTN_ID = 1000;
+  static const uint32_t TIME_MOTION_DETECT  = 3000;
+  static const uint32_t CLOSE_BTN_ID = 1000; 
+  static const uint32_t ESP_INTR_FLAG_DEFAULT= 0;
 
 	static MyApp &get();
 public:
@@ -106,8 +108,10 @@ public:
   libesp::Button &getCloseButton();
   Config &getConfig() {return ConfigStore;}
   libesp::ErrorType initFS();
+  bool wasMotion();
 protected:
 	MyApp();
+  libesp::ErrorType initMotionSensor();
   void handleMessages();
 	virtual libesp::ErrorType onInit();
 	virtual libesp::ErrorType onRun();
@@ -125,6 +129,7 @@ private:
   libesp::ADC::Result LSensorResult;
   SemaphoreHandle_t DisplayTouchSemaphore;
   Config ConfigStore;
+  uint32_t LastConnectCheck;
 private:
 	static MyApp mSelf;
 };

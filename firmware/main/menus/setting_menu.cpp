@@ -18,6 +18,7 @@
 #include <app/display_message_state.h>
 #include "game_of_life.h"
 #include "menu3d.h"
+#include <system.h>
 
 using libesp::ErrorType;
 using libesp::BaseMenu;
@@ -43,9 +44,12 @@ static libesp::Button GOLBtn((const char *)"Game Of Life", uint16_t(2), &GameOfL
 static libesp::RectBBox2D Menu3DBV(Point2Ds(145,80), 40, 15);
 static libesp::Button Menu3DBtn((const char *)"3D", uint16_t(3), &Menu3DBV, RGBColor::BLUE, RGBColor::WHITE);
 
-static const int8_t NUM_INTERFACE_ITEMS = 5;
+static libesp::RectBBox2D ResetBV(Point2Ds(145,120), 40, 15);
+static libesp::Button ResetBtn((const char *)"Reset", uint16_t(4), &ResetBV, RGBColor::BLUE, RGBColor::WHITE);
+
+static const int8_t NUM_INTERFACE_ITEMS = 6;
 static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&StartAPBtn, &GOLBtn, &CalBtn
-  , &Menu3DBtn, &MyApp::get().getCloseButton()};
+  , &Menu3DBtn, &ResetBtn, &MyApp::get().getCloseButton()};
 
 SettingMenu::SettingMenu() : AppBaseMenu(), TouchQueueHandle() 
 	, MyLayout(&InterfaceElements[0],NUM_INTERFACE_ITEMS, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), false)
@@ -93,7 +97,6 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
     	case 0:
         if(InternalState!=AP_RUNNING) {
           StartAPBtn.setName(STOP_AP);
-          MyApp::get().getWiFiMenu()->clearConnectData();
           MyApp::get().getWiFiMenu()->startAP();
           InternalState = AP_RUNNING;
         } else {
@@ -112,6 +115,12 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
       case 3:
         nextState = MyApp::get().getMenu3D();
         break;
+      case 4:
+        MyApp::get().getWiFiMenu()->clearConnectData();
+        MyApp::get().getCalibrationMenu()->eraseCalibration();
+        libesp::System::get().restart();
+        break;
+
       case MyApp::CLOSE_BTN_ID:
         nextState = MyApp::get().getMenuState();
         break;
