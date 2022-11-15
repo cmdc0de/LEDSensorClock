@@ -45,10 +45,11 @@ public:
   libesp::ErrorType hasWiFiBeenSetup();
   libesp::ErrorType connect();
   bool isConnected();
-  libesp::ErrorType initWiFi();
+  libesp::ErrorType initWiFiForSTA();
+  libesp::ErrorType initWiFiForAP();
   libesp::ErrorType clearConnectData();
   libesp::ErrorType startAP();
-  bool stopAP();
+  bool stopWiFi();
   esp_err_t handleRoot(httpd_req_t *req);
   esp_err_t handleScan(httpd_req_t *req);
   esp_err_t handleSetConData(httpd_req_t *req);
@@ -72,10 +73,10 @@ public:
 	virtual libesp::ErrorType staGotIp(system_event_sta_got_ip_t *info);
 	virtual libesp::ErrorType staScanDone(system_event_sta_scan_done_t *info);
 	virtual libesp::ErrorType staAuthChange(system_event_sta_authmode_change_t *info);
+   libesp::ErrorType setWiFiConnectionData(const char *ssid, const char *pass);
 protected:
   bool isFlagSet(uint32_t f) {return ((f&Flags)!=0);}
   void setContentTypeFromFile(httpd_req_t *req, const char *filepath);
-  libesp::ErrorType setWiFiConnectionData(const char *ssid, const char *pass);
   void setTZ();
   esp_err_t readHttp(httpd_req_t *req, char *buf, uint32_t bufLen);
 private:

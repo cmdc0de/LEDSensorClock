@@ -316,30 +316,42 @@ void WiFiMenu::setTZ() {
   tzset();
   ESP_LOGI(LOGTAG,"Timezone set to: %s", &TimeZone[0]);
 }
+ErrorType WiFiMenu::initWiFiForSTA() {
+   MyWiFi.setWifiEventHandler(this);
+   ErrorType et = MyWiFi.init(WIFI_MODE_STA);
+   if(et.ok()) {
+      et = NTPTime.init(MyApp::get().getNVS(),true,time_sync_cb);
+      if(et.ok()) {
+         uint32_t len = sizeof(TimeZone); 
+         et = MyApp::get().getNVS().getValue(TZKEY, &TimeZone[0], len);
+         if(!et.ok()) {
+            strcpy(&TimeZone[0],"Etc/GMT");
+            ESP_LOGI(LOGTAG,"Timezone not set, defaulting to %s", &TimeZone[0]);
+         } else {
+            ESP_LOGI(LOGTAG,"Timezone loaded: %s", &TimeZone[0]);
+         }
+      } else {
+         ESP_LOGE(LOGTAG,"failed to set up NTP");
+      }
+   } else {
+      ESP_LOGE(LOGTAG,"failed to init for STA");
+   }
+   setTZ();
+   return et;
+}
 
-ErrorType WiFiMenu::initWiFi() {
+ErrorType WiFiMenu::initWiFiForAP() {
   MyWiFi.setWifiEventHandler(this);
   ErrorType et = MyWiFi.init(WIFI_MODE_APSTA);
   if(et.ok()) {
-    et = NTPTime.init(MyApp::get().getNVS(),true,time_sync_cb);
-    if(et.ok()) {
       extern const unsigned char cacert_pem_start[] asm("_binary_cacert_pem_start");
       extern const unsigned char cacert_pem_end[]   asm("_binary_cacert_pem_end");
       extern const unsigned char prvtkey_pem_start[] asm("_binary_prvtkey_pem_start");
       extern const unsigned char prvtkey_pem_end[]   asm("_binary_prvtkey_pem_end");
 
       et = WebServer.init(cacert_pem_start, (cacert_pem_end-cacert_pem_start), prvtkey_pem_start, (prvtkey_pem_end-prvtkey_pem_start));
-    }
+      ESP_LOGI(LOGTAG,"Web Server initialized but not started");
   }
-  uint32_t len = sizeof(TimeZone); 
-  et = MyApp::get().getNVS().getValue(TZKEY, &TimeZone[0], len);
-  if(!et.ok()) {
-    strcpy(&TimeZone[0],"Etc/GMT");
-    ESP_LOGI(LOGTAG,"Timezone not set, defaulting to %s", &TimeZone[0]);
-  } else {
-    ESP_LOGI(LOGTAG,"Timezone loaded: %s", &TimeZone[0]);
-  }
-  setTZ();
   return et;
 }
 
@@ -361,11 +373,19 @@ WiFiMenu::~WiFiMenu() {
 
 
 ErrorType WiFiMenu::startAP() {
-  return MyWiFi.startAP(WIFIAPSSID, ""); //start AP
+   ESP_LOGI(LOGTAG,"startAP called");
+   ErrorType et = initWiFiForAP();
+   if(et.ok()) {
+      ESP_LOGI(LOGTAG,"initwififorap call successfully");
+      et = MyWiFi.startAP(WIFIAPSSID, ""); //start AP
+   } else {
+      ESP_LOGE(LOGTAG,"failed init wifi for ap: %s", et.toString());
+   }
+   return et;
 }
 
-bool WiFiMenu::stopAP() {
-  return MyWiFi.stopWiFi();
+bool WiFiMenu::stopWiFi() {
+  return MyWiFi.stopWiFi() && MyWiFi.shutdown();
 }
 
 esp_err_t WiFiMenu::handleScan(httpd_req_t *req) {
@@ -545,7 +565,7 @@ ErrorType WiFiMenu::staStop() {
 
 ErrorType WiFiMenu::wifiReady() {
   ErrorType et;
-  //ESP_LOGI(LOGTAG,__FUNCTION__);
+  ESP_LOGI(LOGTAG,"wifiReady");
   Flags|=WIFI_READY;
   return et;
 }
@@ -679,10 +699,9 @@ ErrorType WiFiMenu::apStart() {
 }
 
 ErrorType WiFiMenu::apStop() {
-  ErrorType et;
+  ErrorType et = WebServer.stop();
   Flags=Flags&~AP_START;
   ESP_LOGI(LOGTAG,"AP Stopped");
-  //stop web server
   return et;
 }
 
@@ -692,6 +711,7 @@ ErrorType WiFiMenu::staConnected(system_event_sta_connected_t *info) {
   Flags=(Flags&~CONNECTING);
   ReTryCount = 0;
   ESP_LOGI(LOGTAG,"staConnected");
+  NTPTime.start();
   return et;
 }
 

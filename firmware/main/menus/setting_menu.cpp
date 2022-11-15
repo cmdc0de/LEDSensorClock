@@ -97,16 +97,17 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
     	case 0:
         if(InternalState!=AP_RUNNING) {
           StartAPBtn.setName(STOP_AP);
+          MyApp::get().getWiFiMenu()->stopWiFi();
           MyApp::get().getWiFiMenu()->startAP();
           InternalState = AP_RUNNING;
         } else {
           StartAPBtn.setName(START_AP);
-          MyApp::get().getWiFiMenu()->stopAP();
+          MyApp::get().getWiFiMenu()->stopWiFi();
           InternalState = SHOW_ALL;
         }
 			  break;
       case 1:
-        MyApp::get().getWiFiMenu()->stopAP();
+        MyApp::get().getWiFiMenu()->stopWiFi();
         nextState = MyApp::get().getCalibrationMenu();
         break;
       case 2:
@@ -143,7 +144,7 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
 
 ErrorType SettingMenu::onShutdown() {
 	MyApp::get().getTouch().removeObserver(TouchQueueHandle);
-  MyApp::get().getWiFiMenu()->stopAP();
+  MyApp::get().getWiFiMenu()->stopWiFi();
 	return ErrorType();
 }
 

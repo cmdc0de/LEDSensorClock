@@ -314,7 +314,7 @@ libesp::ErrorType MyApp::onInit() {
     MHZ19T.start();
   }
 
-#define USE_MOTION_SENSOR
+//#define USE_MOTION_SENSOR
 #ifdef  USE_MOTION_SENSOR
   et = initMotionSensor();
   if(!et.ok()) {
@@ -324,7 +324,8 @@ libesp::ErrorType MyApp::onInit() {
   }
 #endif
 
-  et = MyWiFiMenu.initWiFi();
+  et = MyWiFiMenu.initWiFiForSTA();
+  //et = MyWiFiMenu.initWiFiForAP();
   if(et.ok()) {
     ESP_LOGI(LOGTAG,"OnInit:After MyWiFiMenu::initWiFi: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
   } else {
@@ -395,7 +396,8 @@ ErrorType MyApp::onRun() {
     LastConnectCheck = FreeRTOS::getTimeSinceStart();
     if(!MyWiFiMenu.isConnected()) {
       ESP_LOGI(LOGTAG,"WifI not connected...reconnecting...");
-      MyWiFiMenu.connect();
+      //TODO Fix after I get the madness worked out between STA and AP
+      //MyWiFiMenu.connect();
     }
   }
 
