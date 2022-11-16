@@ -4,8 +4,7 @@
  *      Author: cmdc0de
  */
 
-#ifndef SETTING_STATE_H_
-#define SETTING_STATE_H_
+#pragma once
 
 #include "appbase_menu.h"
 #include <device/display/layout.h>
@@ -14,10 +13,10 @@ namespace libesp {
 	class TouchNotification;
 }
 
-class SettingMenu: public AppBaseMenu {
+class UserConfigMenu: public AppBaseMenu {
 public:
-	SettingMenu();
-	virtual ~SettingMenu();
+	UserConfigMenu();
+	virtual ~UserConfigMenu();
 protected:
 	virtual libesp::ErrorType onInit();
 	virtual libesp::BaseMenu::ReturnStateContext onRun();
@@ -31,5 +30,3 @@ public:
 	static const char *LOGTAG;
 };
 
-
-#endif 

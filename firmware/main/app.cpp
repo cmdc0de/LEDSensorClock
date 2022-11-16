@@ -22,6 +22,7 @@
 #include "menus/wifi_menu.h"
 #include "menus/setting_menu.h"
 #include "menus/menu3d.h"
+#include "menus/user_config_menu.h"
 #include <app/display_message_state.h>
 #include "device/leds/apa102.h"
 #include "spibus.h"
@@ -41,7 +42,7 @@ using libesp::RGBB;
 using libesp::RGBColor;
 using libesp::APA102c;
 using libesp::SPIBus;
-using libesp::DisplayILI9341;
+using libesp::TFTDisplay;
 using libesp::XPT2046;
 using libesp::GUI;
 using libesp::DisplayMessageState;
@@ -52,11 +53,11 @@ const char *MyApp::LOGTAG = "AppTask";
 const char *MyApp::sYES = "Yes";
 const char *MyApp::sNO = "No";
 
-#define START_ROT libesp::DisplayILI9341::LANDSCAPE_TOP_LEFT
+#define START_ROT libesp::TFTDisplay::LANDSCAPE_TOP_LEFT
 static const uint16_t PARALLEL_LINES = 1;
 
-libesp::DisplayILI9341 Display(MyApp::DISPLAY_WIDTH,MyApp::DISPLAY_HEIGHT,START_ROT,
-	PIN_NUM_DISPLAY_BACKLIGHT, PIN_NUM_DISPLAY_RESET);
+libesp::TFTDisplay Display(MyApp::DISPLAY_WIDTH,MyApp::DISPLAY_HEIGHT,START_ROT,
+	PIN_NUM_DISPLAY_BACKLIGHT, PIN_NUM_DISPLAY_RESET, TFTDisplay::ILI9341);
 
 static uint16_t BkBuffer[MyApp::FRAME_BUFFER_WIDTH*MyApp::FRAME_BUFFER_HEIGHT];
 static uint16_t *BackBuffer = &BkBuffer[0];
@@ -90,7 +91,7 @@ MyApp &MyApp::get() {
 MyApp::MyApp() : AppErrors(), CurrentMode(ONE), LastTime(0) ,DHT22T()
                  , InternalQueueHandler(0), Temperature(0.0f), Humidity(0.0f), MHZ19T(), CO2(0)
                  , NVSStorage("appdata","data",false), LSensorResult(), DisplayTouchSemaphore(nullptr)
-                 , ConfigStore(&NVSStorage), LastConnectCheck(0) {
+                 , ConfigStore(&NVSStorage), LastConnectCheck(0), IsConfigMode(0) {
 	ErrorType::setAppDetail(&AppErrors);
 }
 
@@ -237,7 +238,7 @@ libesp::ErrorType MyApp::onInit() {
 	}
 
   //this will init the SPI bus and the display
-  DisplayILI9341::initDisplay(PIN_NUM_DISPLAY_MISO, PIN_NUM_DISPLAY_MOSI,
+  TFTDisplay::initDisplay(PIN_NUM_DISPLAY_MISO, PIN_NUM_DISPLAY_MOSI,
     PIN_NUM_DISPLAY_SCK, SPI_DMA_CH2, PIN_NUM_DISPLAY_DATA_CMD, PIN_NUM_DISPLAY_RESET,
     PIN_NUM_DISPLAY_BACKLIGHT, SPI3_HOST);
 
@@ -257,7 +258,7 @@ libesp::ErrorType MyApp::onInit() {
 	ESP_LOGI(LOGTAG,"After FrameBuf: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
 	ESP_LOGI(LOGTAG,"start display init");
-	et=Display.init(libesp::DisplayILI9341::FORMAT_16_BIT, &Font_6x10, &FrameBuf);
+	et=Display.init(libesp::TFTDisplay::FORMAT_16_BIT, &Font_6x10, &FrameBuf);
 
   if(et.ok()) {
 		ESP_LOGI(LOGTAG,"display init OK");
@@ -324,26 +325,32 @@ libesp::ErrorType MyApp::onInit() {
   }
 #endif
 
-  et = MyWiFiMenu.initWiFiForSTA();
-  //et = MyWiFiMenu.initWiFiForAP();
-  if(et.ok()) {
-    ESP_LOGI(LOGTAG,"OnInit:After MyWiFiMenu::initWiFi: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
-  } else {
-    ESP_LOGE(LOGTAG,"Error Num :%d Msg: %s", et.getErrT(), et.toString());
-  }
+  et = getNVS().getValue(MyApp::CONFIG_MODE,IsConfigMode);
+  ESP_LOGI(LOGTAG, "value of config mode is: %d", int32_t(IsConfigMode));
+   if(isConfigMode()) {
+      //et = MyWiFiMenu.initWiFiForAP();
+      MyApp::get().getWiFiMenu()->startAP();
+      setCurrentMenu(getUserConfigMenu());
+   } else {
+      et = MyWiFiMenu.initWiFiForSTA();
+      if(et.ok()) {
+         ESP_LOGI(LOGTAG,"OnInit:After MyWiFiMenu::initWiFi: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
+      } else {
+         ESP_LOGE(LOGTAG,"Error Num :%d Msg: %s", et.getErrT(), et.toString());
+      }
 
-  if(!MyCalibrationMenu.hasBeenCalibrated()) {
-		setCurrentMenu(getCalibrationMenu());
-	} else {
-    ESP_LOGI(LOGTAG,"***********************************************************");
-    if(MyWiFiMenu.hasWiFiBeenSetup().ok()) {
-      et = MyWiFiMenu.connect();
-  		setCurrentMenu(getMenuState());
-    } else {
-      setCurrentMenu(getSettingMenu());
-    }
-	}
-
+      if(!MyCalibrationMenu.hasBeenCalibrated()) {
+         setCurrentMenu(getCalibrationMenu());
+      } else {
+         ESP_LOGI(LOGTAG,"***********************************************************");
+         if(MyWiFiMenu.hasWiFiBeenSetup().ok()) {
+            et = MyWiFiMenu.connect();
+            setCurrentMenu(getMenuState());
+         } else {
+            setCurrentMenu(getSettingMenu());
+         }
+      }
+   }
 	return et;
 }
 
@@ -392,12 +399,11 @@ ErrorType MyApp::onRun() {
 
   uint32_t timeSinceLast = FreeRTOS::getTimeSinceStart()-LastTime;
   uint32_t connectCheckTime = FreeRTOS::getTimeSinceStart()-LastConnectCheck;
-  if(connectCheckTime > TIME_BETWEEN_WIFI_CONNECTS) {
+  if(connectCheckTime > TIME_BETWEEN_WIFI_CONNECTS && !isConfigMode()) {
     LastConnectCheck = FreeRTOS::getTimeSinceStart();
     if(!MyWiFiMenu.isConnected()) {
       ESP_LOGI(LOGTAG,"WifI not connected...reconnecting...");
-      //TODO Fix after I get the madness worked out between STA and AP
-      //MyWiFiMenu.connect();
+      MyWiFiMenu.connect();
     }
   }
 
@@ -656,6 +662,9 @@ MenuState MyMenuState;
 libesp::DisplayMessageState DMS;
 SettingMenu MySettingMenu;
 GameOfLife GOL;
+UserConfigMenu UCM;
+
+
 Menu3D Menu3DRender( uint8_t(float(MyApp::FRAME_BUFFER_WIDTH)*0.8f)
     , uint8_t(float(MyApp::FRAME_BUFFER_HEIGHT)*0.8f));
 
@@ -681,6 +690,10 @@ CalibrationMenu *MyApp::getCalibrationMenu() {
 
 WiFiMenu *MyApp::getWiFiMenu() {
   return &MyWiFiMenu;
+}
+
+UserConfigMenu *MyApp::getUserConfigMenu() {
+   return &UCM;
 }
 
 DisplayMessageState *MyApp::getDisplayMessageState(BaseMenu *bm, const char *msg, uint32_t msDisplay) {

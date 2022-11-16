@@ -14,6 +14,7 @@ set(srcs "./app.cpp"
   "./menus/3d/renderer.cpp"
   "./menus/game_of_life.cpp"
   "./menus/drawing.cpp"
+  "./menus/user_config_menu.cpp"
 )
 
 idf_component_register(SRCS "${srcs}"

@@ -31,7 +31,7 @@ void DHT22Task::run(void *data) {
     } else {
       ESP_LOGE(LOGTAG,"Failed to read Sensor: %s", et.toString());
     }
-	  vTaskDelay(5000 / portTICK_RATE_MS);
+	  vTaskDelay(30000 / portTICK_RATE_MS);
   }
 }
 

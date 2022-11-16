@@ -46,7 +46,6 @@ public:
   libesp::ErrorType connect();
   bool isConnected();
   libesp::ErrorType initWiFiForSTA();
-  libesp::ErrorType initWiFiForAP();
   libesp::ErrorType clearConnectData();
   libesp::ErrorType startAP();
   bool stopWiFi();

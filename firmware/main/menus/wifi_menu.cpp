@@ -275,7 +275,7 @@ ErrorType WiFiMenu::hasWiFiBeenSetup() {
     et = MyApp::get().getNVS().getValue(WIFIPASSWD, &data[0], len);
     if(et.ok()) {
       Password = &data[0];
-      ESP_LOGI(LOGTAG, "ssid %s: pass: %s", SSID.c_str(), Password.c_str());
+      ESP_LOGI(LOGTAG, "ssid %s: pass: %s", SSID.c_str(), "not telling"); //Password.c_str());
     } else {
       ESP_LOGI(LOGTAG, "error getting password: %u %d %s", len, et.getErrT(), et.toString());
     }
@@ -340,21 +340,6 @@ ErrorType WiFiMenu::initWiFiForSTA() {
    return et;
 }
 
-ErrorType WiFiMenu::initWiFiForAP() {
-  MyWiFi.setWifiEventHandler(this);
-  ErrorType et = MyWiFi.init(WIFI_MODE_APSTA);
-  if(et.ok()) {
-      extern const unsigned char cacert_pem_start[] asm("_binary_cacert_pem_start");
-      extern const unsigned char cacert_pem_end[]   asm("_binary_cacert_pem_end");
-      extern const unsigned char prvtkey_pem_start[] asm("_binary_prvtkey_pem_start");
-      extern const unsigned char prvtkey_pem_end[]   asm("_binary_prvtkey_pem_end");
-
-      et = WebServer.init(cacert_pem_start, (cacert_pem_end-cacert_pem_start), prvtkey_pem_start, (prvtkey_pem_end-prvtkey_pem_start));
-      ESP_LOGI(LOGTAG,"Web Server initialized but not started");
-  }
-  return et;
-}
-
 ErrorType WiFiMenu::connect() {
   ErrorType et = MyWiFi.connect(SSID,Password,WIFI_AUTH_OPEN);
   if(et.ok()) {
@@ -374,10 +359,29 @@ WiFiMenu::~WiFiMenu() {
 
 ErrorType WiFiMenu::startAP() {
    ESP_LOGI(LOGTAG,"startAP called");
-   ErrorType et = initWiFiForAP();
+   MyWiFi.setWifiEventHandler(this);
+   ErrorType et;
+   extern const unsigned char cacert_pem_start[] asm("_binary_cacert_pem_start");
+   extern const unsigned char cacert_pem_end[]   asm("_binary_cacert_pem_end");
+   extern const unsigned char prvtkey_pem_start[] asm("_binary_prvtkey_pem_start");
+   extern const unsigned char prvtkey_pem_end[]   asm("_binary_prvtkey_pem_end");
+
+   et = WebServer.init(cacert_pem_start, (cacert_pem_end-cacert_pem_start), prvtkey_pem_start, (prvtkey_pem_end-prvtkey_pem_start));
+   ESP_LOGI(LOGTAG,"Web Server initialized but not started");
    if(et.ok()) {
-      ESP_LOGI(LOGTAG,"initwififorap call successfully");
-      et = MyWiFi.startAP(WIFIAPSSID, ""); //start AP
+      //TODO pass in SID and password to INIT so we can have the right name
+      ErrorType et = MyWiFi.init(WIFI_MODE_APSTA); //must be APSTA otherwise we can't scan
+      if(et.ok()) {
+         ESP_LOGI(LOGTAG,"initwififorap call successfully");
+         //et = MyWiFi.startAP(WIFIAPSSID, ""); //start AP
+         if(et.ok()) {
+            ESP_LOGI(LOGTAG,"************AP STARTED**************");
+         } else {
+            ESP_LOGE(LOGTAG,"Ap failed to start");
+         }
+      } else {
+         ESP_LOGE(LOGTAG, "failed to init web server");
+      }
    } else {
       ESP_LOGE(LOGTAG,"failed init wifi for ap: %s", et.toString());
    }
