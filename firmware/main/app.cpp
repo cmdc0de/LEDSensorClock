@@ -34,6 +34,7 @@
 #include <math/point.h>
 #include <esp_spiffs.h>
 #include <time.h>
+#include <net/ota.h>
 
 using libesp::ErrorType;
 using libesp::System;
@@ -74,6 +75,8 @@ static WiFiMenu MyWiFiMenu;
 
 static libesp::AABBox2D Close(Point2Ds(185,7),6);
 static libesp::Button CloseButton((const char *)"X", MyApp::CLOSE_BTN_ID, &Close,RGBColor::RED, RGBColor::BLUE);
+
+libesp::OTA CCOTA;
 
 const char *MyErrorMap::toString(int32_t err) {
 	return "TODO";
@@ -182,10 +185,23 @@ libesp::ErrorType MyApp::onInit() {
 	InternalQueueHandler = xQueueCreateStatic(QUEUE_SIZE,MSG_SIZE,&InternalQueueBuffer[0],&InternalQueue);
 
 	ESP_LOGI(LOGTAG,"OnInit: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
-  et = getConfig().init();
-  if(!et.ok()) {
-    ESP_LOGE(LOGTAG,"Failed to init config: %d %s", et.getErrT(), et.toString());
-  }
+   et = getConfig().init();
+   if(!et.ok()) {
+      ESP_LOGE(LOGTAG,"Failed to init config: %d %s", et.getErrT(), et.toString());
+   }
+
+   static const char *UPDATE_URL="https://ledsensorclock.cmdc0de.tech/clock.bin";
+   CCOTA.init(UPDATE_URL);
+   CCOTA.logCurrentActiveParitionInfo();
+   if(CCOTA.isUpdateAvailable()) {
+      ESP_LOGI(LOGTAG,"*****UPDATE AVAILABLE!!!****");
+      et = CCOTA.applyUpdate(true);
+      if(et.ok()) {
+         ESP_LOGI(LOGTAG,"UPDATE SUCCESSFUL to version %s",CCOTA.getCurrentApplicationVersion());
+      } else {
+         ESP_LOGI(LOGTAG,"UPDATE FAILED");
+      }
+   }
 
 	ESP_LOGI(LOGTAG,"OnInit: Free: %u, Min %u", System::get().getFreeHeapSize(),System::get().getMinimumFreeHeapSize());
 
@@ -694,6 +710,10 @@ WiFiMenu *MyApp::getWiFiMenu() {
 
 UserConfigMenu *MyApp::getUserConfigMenu() {
    return &UCM;
+}
+
+libesp::OTA &MyApp::getOTA() {
+   return CCOTA;
 }
 
 DisplayMessageState *MyApp::getDisplayMessageState(BaseMenu *bm, const char *msg, uint32_t msDisplay) {

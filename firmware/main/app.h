@@ -23,6 +23,7 @@ class GUI;
 class DisplayDevice;
 class DisplayMessageState;
 class XPT2046;
+class OTA;
 };
 
 class CalibrationMenu;
@@ -113,6 +114,7 @@ public:
    libesp::ErrorType initFS();
    bool wasMotion();
    bool isConfigMode() {return IsConfigMode==1;}
+   libesp::OTA &getOTA();
 protected:
 	MyApp();
    libesp::ErrorType initMotionSensor();

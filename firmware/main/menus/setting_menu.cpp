@@ -19,6 +19,7 @@
 #include "game_of_life.h"
 #include "menu3d.h"
 #include <system.h>
+#include "update_menu.h"
 
 using libesp::ErrorType;
 using libesp::BaseMenu;
@@ -52,6 +53,8 @@ static libesp::Button ResetBtn((const char *)"Factory Reset", uint16_t(4), &Rese
 static const int8_t NUM_INTERFACE_ITEMS = 7;
 static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&ConfigBtn, &GOLBtn, &CalBtn, &UpdateBtn
   , &Menu3DBtn, &ResetBtn, &MyApp::get().getCloseButton()};
+
+static UpdateMenu UM;
 
 SettingMenu::SettingMenu() : AppBaseMenu(), TouchQueueHandle() 
 	, MyLayout(&InterfaceElements[0],NUM_INTERFACE_ITEMS, MyApp::get().getLastCanvasWidthPixel(), MyApp::get().getLastCanvasHeightPixel(), false) {
@@ -118,7 +121,7 @@ BaseMenu::ReturnStateContext SettingMenu::onRun() {
                libesp::System::get().restart();
             break;
             case 5:
-               //TODO OTA update code here
+               nextState = &UM;         
             break;
             case MyApp::CLOSE_BTN_ID:
                nextState = MyApp::get().getMenuState();

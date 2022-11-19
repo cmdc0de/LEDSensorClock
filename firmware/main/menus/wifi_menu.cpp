@@ -32,16 +32,6 @@ const char *WiFiMenu::CLKNAME    = "My Sensor Clock";
 static etl::vector<libesp::WiFiAPRecord,16> ScanResults;
 static const uint32_t FILE_PATH_MAX = 128;
 
-static const char *SettingArray[] = {
-  "SecondsOnMainScreen"
-    , "SecondsInGameOfLife"
-    , "SecondsIn3D"
-    , "SecondsShowingDrawings"
-
-};
-static const int SettingArrayDefault[] = {300,300,300,120};
-static const uint32_t SettingArraySize = (sizeof(SettingArray)/sizeof(SettingArray[0]));
-
 void time_sync_cb(struct timeval *tv) {
     ESP_LOGI(WiFiMenu::LOGTAG, "Notification of a time synchronization event");
 }
@@ -198,7 +188,6 @@ esp_err_t WiFiMenu::handleSetSettings(httpd_req_t *req) {
 esp_err_t WiFiMenu::handleGetSettings(httpd_req_t *req) {
   cJSON *root = cJSON_CreateArray();
   MyApp::get().getConfig().getAllSettings(root);
-  
   const char *info = cJSON_Print(root);
   ESP_LOGI(LOGTAG, "%s", info);
   httpd_resp_sendstr(req, info);
