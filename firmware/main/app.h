@@ -117,7 +117,6 @@ public:
    libesp::OTA &getOTA();
 protected:
 	MyApp();
-   libesp::ErrorType initMotionSensor();
    void handleMessages();
 	virtual libesp::ErrorType onInit();
 	virtual libesp::ErrorType onRun();

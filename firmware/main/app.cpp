@@ -160,25 +160,6 @@ bool MyApp::wasMotion() {
   return ((FreeRTOS::getTimeSinceStart()-LastMotionDetect)<TIME_MOTION_DETECT);
 }
 
-libesp::ErrorType MyApp::initMotionSensor() {
-	gpio_config_t io_conf;
-  memset(&io_conf,0,sizeof(io_conf));
-	//interrupt of rising edge
-	io_conf.intr_type = GPIO_INTR_POSEDGE;
-	io_conf.pin_bit_mask = (1ULL << PIN_NUM_IR_OUTPUT_IRQ);
-	//set as input mode    
-	io_conf.mode = GPIO_MODE_INPUT;
-	//enable pull-up mode
-	io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
-	io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-	gpio_config(&io_conf);
-	//start gpio task
-	gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
-	//hook isr handler for specific gpio pin
-	return gpio_isr_handler_add(PIN_NUM_IR_OUTPUT_IRQ, gpio_isr_handler, (void*) (1ULL << PIN_NUM_IR_OUTPUT_IRQ));
-}
-
-
 libesp::ErrorType MyApp::onInit() {
 	ErrorType et;
 
@@ -190,7 +171,7 @@ libesp::ErrorType MyApp::onInit() {
       ESP_LOGE(LOGTAG,"Failed to init config: %d %s", et.getErrT(), et.toString());
    }
 
-   static const char *UPDATE_URL="https://ledsensorclock.cmdc0de.tech/clock.bin";
+   const char *UPDATE_URL="http://s3.us-west-2.amazonaws.com/tech.cmdc0de.ledsensorclock/LEDSensorClock.bin";
    CCOTA.init(UPDATE_URL);
    CCOTA.logCurrentActiveParitionInfo();
    if(CCOTA.isUpdateAvailable()) {
@@ -318,7 +299,7 @@ libesp::ErrorType MyApp::onInit() {
   } else {
     libesp::ADC::Result r;
     LightSensor.acquireData(r);
-    ESP_LOGI(LOGTAG, "RAW: %u Voltage: %u", r.RawAvg, r.CalculatedVoltage);
+    //ESP_LOGI(LOGTAG, "RAW: %u Voltage: %u", r.RawAvg, r.CalculatedVoltage);
   }
 
   //init MHZ19
@@ -331,15 +312,6 @@ libesp::ErrorType MyApp::onInit() {
     MHZ19T.start();
   }
 
-//#define USE_MOTION_SENSOR
-#ifdef  USE_MOTION_SENSOR
-  et = initMotionSensor();
-  if(!et.ok()) {
-    ESP_LOGI(LOGTAG,"failed to start motion sensor");
-  } else {
-    ESP_LOGI(LOGTAG,"motion sensor started");
-  }
-#endif
 
   et = getNVS().getValue(MyApp::CONFIG_MODE,IsConfigMode);
   ESP_LOGI(LOGTAG, "value of config mode is: %d", int32_t(IsConfigMode));
@@ -446,6 +418,7 @@ ErrorType MyApp::onRun() {
     switch(CurrentMode) {
     case ONE:
       {
+        //ESP_LOGI(LOGTAG,"mode 1");
         for(int i=0;i<NumLEDs;++i) {
           leds[i].setBlue(0);
           leds[i].setBrightness(maxBrightness);
@@ -460,6 +433,7 @@ ErrorType MyApp::onRun() {
       break;
     case TWO:
       {
+        //ESP_LOGI(LOGTAG,"mode 2");
         for(int i=0;i<NumLEDs;++i) {
           leds[i].setBrightness(maxBrightness>>1);
           leds[i].setGreen(0);
@@ -473,6 +447,7 @@ ErrorType MyApp::onRun() {
       break;
     case THREE:
       {
+        //ESP_LOGI(LOGTAG,"mode 3");
         for(int i=0;i<NumLEDs;++i) {
           leds[i].setBrightness(maxBrightness>>2);
           leds[i].setGreen(0);
@@ -486,6 +461,7 @@ ErrorType MyApp::onRun() {
       break;
     case FOUR:
       {
+        //ESP_LOGI(LOGTAG,"clock mode");
         time_t now = 0;
         time(&now);
         struct tm timeinfo;

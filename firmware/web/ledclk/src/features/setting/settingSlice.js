@@ -8,7 +8,7 @@ const initialState = {
 }
 
 export const fetchSettings = createAsyncThunk('setting/fetchSettings', async () => {
-  var uri = '/setting';
+  var uri = '/settings';
   if (process.env.NODE_ENV !== 'production') {
     uri = 'http://localhost:5000/setting';
   }

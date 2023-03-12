@@ -23,20 +23,17 @@ static libesp::Label TempLabel(uint16_t(0), (const char *)"Temp", &TempBV,RGBCol
 static libesp::RectBBox2D HumBV(Point2Ds(85,37), 20, 15);
 static libesp::Label HumLabel (uint16_t(0), (const char *)"Humidity", &HumBV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
 
-static libesp::RectBBox2D CO2BV(Point2Ds(140,37), 20, 15);
+static libesp::RectBBox2D CO2BV(Point2Ds(85,120), 20, 15);
 static libesp::Label CO2Label (uint16_t(0), (const char *)"CO2", &CO2BV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
 
 static libesp::RectBBox2D LSBV(Point2Ds(30,120), 20, 15);
 static libesp::Label LSLabel (uint16_t(0), (const char *)"Light", &LSBV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
 
-static libesp::RectBBox2D OzoneBV(Point2Ds(85,120), 20, 15);
-static libesp::Label OzoneLabel (uint16_t(0), (const char *)"Ozone", &OzoneBV,RGBColor::BLUE, RGBColor::WHITE, RGBColor::BLACK, false);
-
 static libesp::RectBBox2D SettingRect(Point2Ds(150,120), 28, 15);
 static libesp::Button SettingBtn((const char *)"Settings", uint16_t(2), &SettingRect, RGBColor::BLUE, RGBColor::WHITE);
 
-static const int8_t NUM_INTERFACE_ITEMS = 6;
-static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&TempLabel, &HumLabel, &CO2Label, &LSLabel, &OzoneLabel, &SettingBtn};
+static const int8_t NUM_INTERFACE_ITEMS = 5;
+static libesp::Widget *InterfaceElements[NUM_INTERFACE_ITEMS] = {&TempLabel, &HumLabel, &CO2Label, &LSLabel, &SettingBtn};
 
 MenuState::MenuState() :
 	AppBaseMenu(),
@@ -93,9 +90,7 @@ libesp::BaseMenu::ReturnStateContext MenuState::onRun() {
   sprintf(&buf[0],"%u", MyApp::get().getLightCalcVoltage());
   LSLabel.setDisplayText(&buf[0]);
 
-  OzoneLabel.setDisplayText("TODO");
-
-	MyLayout.draw(&MyApp::get().getDisplay());
+   MyLayout.draw(&MyApp::get().getDisplay());
     
   time_t now = 0;
   time(&now);
