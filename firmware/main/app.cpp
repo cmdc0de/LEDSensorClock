@@ -171,7 +171,8 @@ libesp::ErrorType MyApp::onInit() {
       ESP_LOGE(LOGTAG,"Failed to init config: %d %s", et.getErrT(), et.toString());
    }
 
-   const char *UPDATE_URL="http://s3.us-west-2.amazonaws.com/tech.cmdc0de.ledsensorclock/LEDSensorClock.bin";
+   //const char *UPDATE_URL="https://s3.us-west-2.amazonaws.com/tech.cmdc0de.ledsensorclock/LEDSensorClock.bin";
+   const char *UPDATE_URL="https://www.google.com";
    CCOTA.init(UPDATE_URL);
    CCOTA.logCurrentActiveParitionInfo();
    if(CCOTA.isUpdateAvailable()) {
